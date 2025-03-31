@@ -6,7 +6,7 @@ st.markdown("<h1 style='color:white;'>PnL & Risk Dashboard</h1>", unsafe_allow_h
 
 my_component = components.declare_component(
     name="my_component",
-    path="Frontend/my_component/build/"
+    path="frontend/my_component/build"
 )
 
 response = my_component()
