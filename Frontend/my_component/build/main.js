@@ -1,6 +1,5 @@
-console.log("main.js loaded");
 import { Streamlit } from "streamlit-component-lib";
-
+console.log("main.js loaded");
 const precisionMap = {
   BTC: 5, ETH: 4, XRP: 3, ADA: 3, SOL: 5, LINK: 3,
   ONDO: 3, CRV: 3, CVX: 3, SUI: 3, FARTCOIN: 3,
