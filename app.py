@@ -1,6 +1,7 @@
 import streamlit as st 
 import requests 
-import os from datetime import datetime 
+import os 
+from datetime import datetime 
 from PIL import Image, ImageDraw, ImageFont
 import io
 
