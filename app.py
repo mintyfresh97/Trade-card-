@@ -5,7 +5,7 @@ from datetime import datetime
 from PIL import Image, ImageDraw, ImageFont
 import io
 
-CoinGecko ID mapping for Cryptocurrencies
+#CoinGecko ID mapping for Cryptocurrencies
 
 coingecko_ids = { 'Bitcoin (BTC)': 'bitcoin', 'Ethereum (ETH)': 'ethereum', 'XRP (XRP)': 'ripple', 'Solana (SOL)': 'solana', 'Cardano (ADA)': 'cardano', 'Chainlink (LINK)': 'chainlink', 'Curve (CRV)': 'curve-dao-token', 'Convex (CVX)': 'convex-finance', 'Sui (SUI)': 'sui', 'Fartcoin (FARTCOIN)': 'fartcoin', 'Ondo (ONDO)': 'ondo-finance' }
 
