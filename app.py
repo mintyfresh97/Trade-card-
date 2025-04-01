@@ -5,27 +5,34 @@ from datetime import datetime
 from PIL import Image, ImageDraw, ImageFont
 import io
 
-#Set page layout
-
+# Set page layout
 st.set_page_config(page_title="PnL & Risk Dashboard", layout="wide")
 st.markdown("<h1 style='color:white;'>PnL & Risk Dashboard</h1>", unsafe_allow_html=True)
 
-#Asset precision and icon filenames
+# Asset precision and icon filenames
+precision_map = {
+    "BTC": 5, "ETH": 4, "XRP": 3, "ADA": 3, "SOL": 5, "LINK": 3,
+    "ONDO": 3, "CRV": 3, "CVX": 3, "SUI": 3, "FARTCOIN": 3
+}
 
-precision_map = { "BTC": 5, "ETH": 4, "XRP": 3, "ADA": 3, "SOL": 5, "LINK": 3, "ONDO": 3, "CRV": 3, "CVX": 3, "SUI": 3, "FARTCOIN": 3 }
+icon_map = {
+    "BTC": "bitcoin-btc-logo.png", "ETH": "ethereum-eth-logo.png", 
+    "XRP": "xrp-xrp-logo.png", "ADA": "cardano-ada-logo.png", 
+    "SOL": "solana-sol-logo.png", "LINK": "chainlink-link-logo.png", 
+    "ONDO": "ondo-finance-ondo-logo.png", "CRV": "curve-dao-token-crv-logo.png", 
+    "CVX": "convex-finance-cvx-logo.png", "SUI": "sui-sui-logo.png", 
+    "FARTCOIN": "fartcoin-logo.png"
+}
 
-icon_map = { "BTC": "bitcoin-btc-logo.png", "ETH": "ethereum-eth-logo.png", "XRP": "xrp-xrp-logo.png", "ADA": "cardano-ada-logo.png", "SOL": "solana-sol-logo.png", "LINK": "chainlink-link-logo.png", "ONDO": "ondo-finance-ondo-logo.png", "CRV": "curve-dao-token-crv-logo.png", "CVX": "convex-finance-cvx-logo.png", "SUI": "sui-sui-logo.png", "FARTCOIN": "fartcoin-logo.png" }
-
-#--- Input fields ---
-
+# --- Input fields ---
 col1, col2 = st.columns([1, 2])
 
 with col1: 
-    asset = 
-    st.selectbox("Select Asset", list(precision_map.keys())) 
+    asset = st.selectbox("Select Asset", list(precision_map.keys())) 
     icon_path = f"assets/{icon_map.get(asset, '')}" 
     if os.path.exists(icon_path):
-        st.image(icon_path, width=32) else: 
+        st.image(icon_path, width=32)
+    else:
         st.warning("Icon not found")
 
 position = st.number_input("Position Size (£)", value=500.0)
@@ -48,13 +55,29 @@ stop_loss = st.number_input("Stop Loss", value=81000.0)
 take_profit = st.number_input("Take Profit", value=83000.0)
 trade_date = datetime.now().strftime("%Y-%m-%d")
 
---- Calculations ---
+# --- Calculations ---
+digits = precision_map[asset]
+total_exposure = position * leverage
+risk = abs(entry - stop_loss) * total_exposure / entry
+reward = abs(take_profit - entry) * total_exposure / entry
+breakeven = round((entry + stop_loss) / 2, digits)
+rr_ratio = round(reward / risk, 2) if risk != 0 else 0
 
-digits = precision_map[asset] total_exposure = position * leverage risk = abs(entry - stop_loss) * total_exposure / entry reward = abs(take_profit - entry) * total_exposure / entry breakeven = round((entry + stop_loss) / 2, digits) rr_ratio = round(reward / risk, 2) if risk != 0 else 0
-
---- Display Trade Card ---
-
-with col2: st.subheader("Trade Card") st.markdown(f"Asset: {asset}") st.markdown(f"Live Price: {live_price if live_price else 'N/A'}") st.markdown(f"Position: £{position}") st.markdown(f"Leverage: {leverage}x") st.markdown(f"Entry: {entry}") st.markdown(f"Stop Loss: {stop_loss}") st.markdown(f"Take Profit: {take_profit}") st.markdown(f"Risk: £{risk:.2f}") st.markdown(f"Reward: £{reward:.2f}") st.markdown(f"RR Ratio: {rr_ratio}:1") st.markdown(f"Breakeven: {breakeven}") st.markdown(f"Date: {trade_date}")
+# --- Display Trade Card ---
+with col2: 
+    st.subheader("Trade Card")
+    st.markdown(f"Asset: {asset}")
+    st.markdown(f"Live Price: {live_price if live_price else 'N/A'}")
+    st.markdown(f"Position: £{position}")
+    st.markdown(f"Leverage: {leverage}x")
+    st.markdown(f"Entry: {entry}")
+    st.markdown(f"Stop Loss: {stop_loss}")
+    st.markdown(f"Take Profit: {take_profit}")
+    st.markdown(f"Risk: £{risk:.2f}")
+    st.markdown(f"Reward: £{reward:.2f}")
+    st.markdown(f"RR Ratio: {rr_ratio}:1")
+    st.markdown(f"Breakeven: {breakeven}")
+    st.markdown(f"Date: {trade_date}")
 
 # --- Downloadable Image ---
 if st.button("Download Trade Card"):
@@ -86,4 +109,3 @@ if st.button("Download Trade Card"):
         file_name=f"trade_card_{asset}_{trade_date}.png",
         mime="image/png"
     )
-
