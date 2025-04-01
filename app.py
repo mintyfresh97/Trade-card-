@@ -4,10 +4,22 @@ import os
 from datetime import datetime
 from PIL import Image, ImageDraw, ImageFont
 import io
+import yfinance as yf
 
-# Set page layout
-st.set_page_config(page_title="PnL & Risk Dashboard", layout="wide")
-st.markdown("<h1 style='color:white;'>PnL & Risk Dashboard</h1>", unsafe_allow_html=True)
+# CoinGecko ID mapping
+coingecko_ids = {
+    'Bitcoin (BTC)': 'bitcoin',
+    'Ethereum (ETH)': 'ethereum',
+    'XRP': 'ripple',
+    'Solana (SOL)': 'solana',
+    'Cardano (ADA)': 'cardano',
+    'Chainlink (LINK)': 'chainlink',
+    'Curve (CRV)': 'curve-dao-token',
+    'Convex (CVX)': 'convex-finance',
+    'Sui (SUI)': 'sui',
+    'Fartcoin': 'fartcoin',
+    'Ondo (ONDO)': 'ondo-finance'
+}
 
 # Asset precision and icon filenames
 precision_map = {
@@ -16,20 +28,48 @@ precision_map = {
 }
 
 icon_map = {
-    "BTC": "bitcoin-btc-logo.png", "ETH": "ethereum-eth-logo.png",
-    "XRP": "xrp-xrp-logo.png", "ADA": "cardano-ada-logo.png",
-    "SOL": "solana-sol-logo.png", "LINK": "chainlink-link-logo.png",
-    "ONDO": "ondo-finance-ondo-logo.png", "CRV": "curve-dao-token-crv-logo.png",
-    "CVX": "convex-finance-cvx-logo.png", "SUI": "sui-sui-logo.png",
+    "BTC": "bitcoin-btc-logo.png", "ETH": "ethereum-eth-logo.png", 
+    "XRP": "xrp-xrp-logo.png", "ADA": "cardano-ada-logo.png", 
+    "SOL": "solana-sol-logo.png", "LINK": "chainlink-link-logo.png", 
+    "ONDO": "ondo-finance-ondo-logo.png", "CRV": "curve-dao-token-crv-logo.png", 
+    "CVX": "convex-finance-cvx-logo.png", "SUI": "sui-sui-logo.png", 
     "FARTCOIN": "fartcoin-logo.png"
 }
+
+# Function to get cryptocurrency price from CoinGecko
+def get_crypto_price_from_coingecko(name):
+    try:
+        coin_id = coingecko_ids.get(name)
+        if not coin_id:
+            raise ValueError("Unknown CoinGecko ID")
+        url = f"https://api.coingecko.com/api/v3/simple/price?ids={coin_id}&vs_currencies=usd"
+        response = requests.get(url, timeout=5)
+        data = response.json()
+        return data[coin_id]['usd']
+    except Exception as e:
+        st.error(f"CoinGecko API Error for {name}: {e}")
+        return None
+
+# Function to get stock price using Yahoo Finance
+def get_stock_price(symbol):
+    try:
+        stock = yf.Ticker(symbol)
+        data = stock.history(period='1d')
+        return data['Close'].iloc[-1]
+    except Exception as e:
+        st.error(f"Yahoo Finance Error for {symbol}: {e}")
+        return None
+
+# Set page layout
+st.set_page_config(page_title="PnL & Risk Dashboard", layout="wide")
+st.markdown("<h1 style='color:white;'>PnL & Risk Dashboard</h1>", unsafe_allow_html=True)
 
 # --- Input fields ---
 col1, col2 = st.columns([1, 2])
 
-with col1:
-    asset = st.selectbox("Select Asset", list(precision_map.keys()))
-    icon_path = f"assets/{icon_map.get(asset, '')}"
+with col1: 
+    asset = st.selectbox("Select Asset", list(precision_map.keys())) 
+    icon_path = f"assets/{icon_map.get(asset, '')}" 
     if os.path.exists(icon_path):
         st.image(icon_path, width=32)
     else:
@@ -64,7 +104,7 @@ breakeven = round((entry + stop_loss) / 2, digits)
 rr_ratio = round(reward / risk, 2) if risk != 0 else 0
 
 # --- Display Trade Card ---
-with col2:
+with col2: 
     st.subheader("Trade Card")
     st.markdown(f"Asset: {asset}")
     st.markdown(f"Live Price: {live_price if live_price else 'N/A'}")
