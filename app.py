@@ -1,3 +1,4 @@
+
 import streamlit as st
 import requests
 import os
@@ -67,22 +68,27 @@ with col1:
     else:
         st.warning("Icon not found")
 
-position = st.number_input("Position Size (£)", value=500.0)
+position = st.number_input("Position Size (Â£)", value=500.0)
 leverage = st.number_input("Leverage", value=20)
 
-# Auto-fetch price
+# Auto-fetch price and auto-calculate SL/TP
 try:
     live_price = get_crypto_price_from_coingecko(asset_display)
+    digits = precision_map.get(asset_symbol, 2)
     if live_price:
-        entry = st.number_input("Entry Price", value=float(live_price))
+        entry = st.number_input("Entry Price", value=round(live_price, digits), format=f"%.{digits}f")
+        stop_loss = st.number_input("Stop Loss", value=round(entry * 0.99, digits), format=f"%.{digits}f")
+        take_profit = st.number_input("Take Profit", value=round(entry * 1.02, digits), format=f"%.{digits}f")
     else:
         entry = st.number_input("Entry Price", value=82000.0)
+        stop_loss = st.number_input("Stop Loss", value=81000.0)
+        take_profit = st.number_input("Take Profit", value=83000.0)
 except:
     entry = st.number_input("Entry Price", value=82000.0)
+    stop_loss = st.number_input("Stop Loss", value=81000.0)
+    take_profit = st.number_input("Take Profit", value=83000.0)
     live_price = "Not available"
 
-stop_loss = st.number_input("Stop Loss", value=81000.0)
-take_profit = st.number_input("Take Profit", value=83000.0)
 trade_date = datetime.now().strftime("%Y-%m-%d")
 
 # --- Calculations ---
@@ -98,13 +104,13 @@ with col2:
     st.subheader("Trade Card")
     st.markdown(f"Asset: {asset_symbol}")
     st.markdown(f"Live Price: {live_price if live_price else 'N/A'}")
-    st.markdown(f"Position: £{position}")
+    st.markdown(f"Position: Â£{position}")
     st.markdown(f"Leverage: {leverage}x")
     st.markdown(f"Entry: {entry}")
     st.markdown(f"Stop Loss: {stop_loss}")
     st.markdown(f"Take Profit: {take_profit}")
-    st.markdown(f"Risk: £{risk:.2f}")
-    st.markdown(f"Reward: £{reward:.2f}")
+    st.markdown(f"Risk: Â£{risk:.2f}")
+    st.markdown(f"Reward: Â£{reward:.2f}")
     st.markdown(f"RR Ratio: {rr_ratio}:1")
     st.markdown(f"Breakeven: {breakeven}")
     st.markdown(f"Date: {trade_date}")
@@ -122,8 +128,8 @@ if st.button("Download Trade Card"):
         f"Entry: {entry}",
         f"Stop: {stop_loss}",
         f"Target: {take_profit}",
-        f"Risk: £{risk:.2f}",
-        f"Reward: £{reward:.2f}",
+        f"Risk: Â£{risk:.2f}",
+        f"Reward: Â£{reward:.2f}",
         f"RR Ratio: {rr_ratio}:1",
         f"Breakeven: {breakeven}"
     ]
