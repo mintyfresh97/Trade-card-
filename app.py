@@ -1,95 +1,97 @@
 import streamlit as st
-from PIL import Image
 import requests
-from io import BytesIO
 from datetime import datetime
+from io import BytesIO
+from PIL import Image, ImageDraw, ImageFont
 
-st.set_page_config(page_title="PnL & Risk Dashboard", layout="centered")
-
-# Supported assets and logo filenames (match your assets folder)
+# Supported assets and their logo paths
 ASSETS = {
-    "BTC": "bitcoin-btc-logo.png",
-    "ETH": "ethereum-eth-logo.png",
-    "XRP": "xrp-xrp-logo.png",
-    "ADA": "cardano-ada-logo.png",
-    "SOL": "solana-sol-logo.png",
-    "LINK": "chainlink-link-logo.png",
-    "CRV": "curve-dao-token-logo.png",
-    "CVX": "convex-finance-cvx-logo.png",
-    "SUI": "sui-sui-logo.png",
-    "ONDO": "ondo-finance-ondo-logo.png"
+    "BTC": "assets/BTC.png",
+    "ETH": "assets/ETH.png",
+    "XRP": "assets/XRP.png",
+    "ADA": "assets/ADA.png",
+    "SOL": "assets/SOL.png",
+    "LINK": "assets/LINK.png",
+    "ONDO": "assets/ONDO.png",
+    "CRV": "assets/CRV.png",
+    "CVX": "assets/CVX.png",
+    "SUI": "assets/SUI.png",
+    "FARTCOIN": "assets/FARTCOIN.png",
 }
 
+# Set layout and title
+st.set_page_config(page_title="PnL & Risk Dashboard", layout="centered")
 st.title("PnL & Risk Dashboard")
 
 # Asset selection
-col1, col2 = st.columns([2, 1])
+col1, col2 = st.columns([1, 6])
 with col1:
-    asset = st.selectbox("Choose Asset", options=list(ASSETS.keys()))
+    asset = st.selectbox("Select Asset", list(ASSETS.keys()))
 with col2:
-    logo_path = f"assets/{ASSETS[asset]}"
-    try:
-        st.image(logo_path, width=48)
-    except:
-        st.warning("Icon not found.")
+    st.image(ASSETS[asset], width=50)
 
-# Inputs
-position = st.number_input("Position Size (£)", value=100.0)
+# Input fields
+position = st.number_input("Position Size (£)", value=500)
 leverage = st.number_input("Leverage", value=20)
-entry = st.number_input("Entry Price", value=0.0, format="%.5f")
-stop = st.number_input("Stop Loss", value=0.0, format="%.5f")
-target = st.number_input("Take Profit", value=0.0, format="%.5f")
+entry = st.number_input("Entry Price")
+stop = st.number_input("Stop Loss")
+target = st.number_input("Take Profit")
 
-# Autofill button
-if st.button("Autofill Live Price as Entry"):
+# Autofill live price
+if st.button("Fetch Live Price"):
     try:
-        coingecko_id = asset.lower()
-        r = requests.get(f"https://api.coingecko.com/api/v3/simple/price?ids={coingecko_id}&vs_currencies=gbp")
-        price = r.json()[coingecko_id]["gbp"]
-        st.session_state["entry"] = price
-        st.experimental_rerun()
+        url = f"https://api.coingecko.com/api/v3/simple/price?ids={asset.lower()}&vs_currencies=usd"
+        response = requests.get(url).json()
+        live_price = response[asset.lower()]["usd"]
+        entry = round(live_price, 5)
+        st.success(f"Live price for {asset}: ${entry}")
     except Exception as e:
-        st.error(f"Could not fetch live price: '{asset.lower()}'")
+        st.error(f"Error fetching price: {e}")
 
-# Calculation
+# Calculations
 if entry and stop and target:
-    exposure = position * leverage
-    risk = abs(entry - stop) * exposure / entry
-    reward = abs(target - entry) * exposure / entry
-    rr = round(reward / risk, 2) if risk != 0 else 0
+    total_exposure = position * leverage
+    risk = abs(entry - stop) * total_exposure / entry
+    reward = abs(target - entry) * total_exposure / entry
     breakeven = round((entry + stop) / 2, 5)
+    rr_ratio = round(reward / risk, 2) if risk != 0 else 0
 
-    st.subheader("Trade Summary")
-    st.markdown(f"""
-    - **Breakeven / Current Price:** {breakeven}
-    - **Profit if TP Hit:** £{reward:.2f}
-    - **Loss if SL Hit:** £{risk:.2f}
-    - **Reward / Risk Ratio:** {rr}:1
-    """)
+    st.subheader("Trade Metrics")
+    st.markdown(f"- **Total Exposure**: £{total_exposure}")
+    st.markdown(f"- **Risk**: £{risk:.2f}")
+    st.markdown(f"- **Reward**: £{reward:.2f}")
+    st.markdown(f"- **Breakeven Price**: {breakeven}")
+    st.markdown(f"- **Reward-to-Risk Ratio**: {rr_ratio}:1")
 
-    # Trade card preview
+    # Trade Card
     st.subheader("Trade Card")
-    trade_card = Image.new("RGB", (600, 300), color="#111111")
-    from PIL import ImageDraw, ImageFont
 
-    draw = ImageDraw.Draw(trade_card)
-    draw.text((20, 20), f"{asset} Trade Summary – {datetime.now().strftime('%Y-%m-%d')}", fill="white")
+    try:
+        card = Image.new("RGB", (600, 300), color="#111111")
+        draw = ImageDraw.Draw(card)
+        font = ImageFont.load_default()
 
-    details = [
-        f"Position: £{position}",
-        f"Leverage: {leverage}x",
-        f"Entry: {entry}",
-        f"Stop Loss: {stop}",
-        f"Take Profit: {target}",
-        f"RR: {rr}:1",
-        f"Risk: £{risk:.2f}",
-        f"Reward: £{reward:.2f}"
-    ]
+        draw.text((20, 20), f"{asset} Trade Summary – {datetime.now().strftime('%Y-%m-%d')}", fill="white", font=font)
 
-    for i, line in enumerate(details):
-        draw.text((20, 60 + i * 28), line, fill="white")
+        details = [
+            f"Position: £{position}",
+            f"Leverage: {leverage}x",
+            f"Entry: {entry}",
+            f"Stop Loss: {stop}",
+            f"Take Profit: {target}",
+            f"RR: {rr_ratio}:1",
+            f"Risk: £{risk:.2f}",
+            f"Reward: £{reward:.2f}"
+        ]
 
-    buf = BytesIO()
-    trade_card.save(buf, format="PNG")
-    st.image(buf.getvalue())
-    st.download_button("Download Trade Card", buf.getvalue(), file_name=f"{asset}_trade_card.png", mime="image/png")
+        for i, line in enumerate(details):
+            draw.text((20, 60 + i * 28), line, fill="white", font=font)
+
+        buffer = BytesIO()
+        card.save(buffer, format="PNG")
+        image_bytes = buffer.getvalue()
+
+        st.image(image_bytes)
+        st.download_button("Download Trade Card", data=image_bytes, file_name=f"{asset}_trade_card.png", mime="image/png")
+    except Exception as e:
+        st.error(f"Error generating trade card: {e}")
