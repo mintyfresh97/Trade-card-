@@ -10,7 +10,7 @@ import io
 st.set_page_config(page_title="PnL & Risk Dashboard", layout="wide")
 st.markdown("<h1 style='color:white;'>PnL & Risk Dashboard</h1>", unsafe_allow_html=True)
 
-Asset precision and icon filenames
+#Asset precision and icon filenames
 
 precision_map = { "BTC": 5, "ETH": 4, "XRP": 3, "ADA": 3, "SOL": 5, "LINK": 3, "ONDO": 3, "CRV": 3, "CVX": 3, "SUI": 3, "FARTCOIN": 3 }
 
