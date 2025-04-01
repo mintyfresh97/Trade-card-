@@ -1,80 +1,78 @@
 import streamlit as st
-import requests
 from datetime import datetime
+import os
 
-# Set page config
 st.set_page_config(page_title="PnL & Risk Dashboard", layout="centered")
 
-st.markdown("<h1 style='color:white;'>PnL & Risk Dashboard</h1>", unsafe_allow_html=True)
+# Supported crypto assets and icons
+assets = {
+    "BTC": "assets/BTC.png",
+    "ETH": "assets/ETH.png",
+    "XRP": "assets/XRP.png",
+    "SOL": "assets/SOL.png",
+    "ADA": "assets/ADA.png",
+    "LINK": "assets/LINK.png",
+    "CRV": "assets/CRV.png",
+    "CVX": "assets/CVX.png",
+    "SUI": "assets/SUI.png",
+    "ONDO": "assets/ONDO.png",
+    "FARTCOIN": "assets/FARTCOIN.png",
+}
 
-# Helper to map asset to logo file
-def get_logo_filename(asset):
-    logos = {
-        "BTC": "bitcoin-btc-logo.png",
-        "ETH": "ethereum-eth-logo.png",
-        "XRP": "xrp-xrp-logo.png",
-        "ADA": "cardano-ada-logo.png",
-        "SOL": "solana-sol-logo.png",
-        "LINK": "chainlink-link-logo.png",
-        "ONDO": "ondo-finance-ondo-logo.png",
-        "CRV": "curve-dao-token-crv-logo.png",
-        "CVX": "convex-finance-cvx-logo.png",
-        "SUI": "sui-sui-logo.png",
-    }
-    return f"assets/{logos.get(asset, 'bitcoin-btc-logo.png')}"
+st.title("PnL & Risk Dashboard")
 
-# Asset selector
-assets = ["BTC", "ETH", "XRP", "ADA", "SOL", "LINK", "ONDO", "CRV", "CVX", "SUI"]
-asset = st.selectbox("Select Asset", assets)
+# --- Sidebar ---
+st.sidebar.header("Trade Input")
 
-# Show logo and live price
-logo_path = get_logo_filename(asset)
-col1, col2 = st.columns([1, 6])
+asset = st.sidebar.selectbox("Select Crypto Asset", list(assets.keys()))
+position = st.sidebar.number_input("Position Size (£)", value=500.0)
+leverage = st.sidebar.number_input("Leverage", value=20)
+entry = st.sidebar.number_input("Entry Price", value=0.0)
+stop_loss = st.sidebar.number_input("Stop Loss", value=0.0)
+take_profit = st.sidebar.number_input("Take Profit", value=0.0)
+
+# --- Trade Card Display ---
+st.subheader("Trade Card")
+
+col1, col2 = st.columns([1, 5])
 with col1:
-    st.image(logo_path, width=40)
+    if os.path.exists(assets[asset]):
+        st.image(assets[asset], width=50)
 with col2:
-    # Fetch price
+    st.markdown(f"### {asset}")
+    st.markdown(f"**Date:** {datetime.now().strftime('%Y-%m-%d')}")
+
+st.markdown(f"**Position:** £{position} | **Leverage:** {leverage}x")
+
+# Validate inputs
+if entry and stop_loss and take_profit and position and leverage:
     try:
-        price = requests.get(f"https://api.coingecko.com/api/v3/simple/price?ids={asset.lower()}&vs_currencies=eur").json()
-        live_price = price[asset.lower()]["eur"]
-    except:
-        live_price = 0.0
-    st.markdown(f"**{asset}** €{live_price}")
+        entry = float(entry)
+        stop_loss = float(stop_loss)
+        take_profit = float(take_profit)
+        position = float(position)
+        leverage = float(leverage)
 
-# User inputs
-position = st.number_input("Position Size (£)", value=500.0)
-leverage = st.number_input("Leverage", value=20)
-entry = st.number_input("Entry Price", value=round(live_price, 4))
-stop_loss = st.number_input("Stop Loss", value=round(entry * 0.9, 4))
-take_profit = st.number_input("Take Profit", value=round(entry * 1.1, 4))
-date = st.date_input("Trade Date", value=datetime.now().date())
+        # Calculations
+        total_exposure = position * leverage
+        risk = abs(entry - stop_loss) * total_exposure / entry
+        reward = abs(take_profit - entry) * total_exposure / entry
+        breakeven = round((entry + stop_loss) / 2, 5)
+        rr_ratio = round(reward / risk, 2) if risk != 0 else 0
 
-# Calculations
-total_exposure = position * leverage
-risk = abs(entry - stop_loss) * total_exposure / entry
-reward = abs(take_profit - entry) * total_exposure / entry
-breakeven = round((entry + stop_loss) / 2, 5)
-rr_ratio = round(reward / risk, 2) if risk != 0 else 0
-pnl = reward if take_profit > entry else -risk
+        st.success("Calculation complete!")
 
-# Trade Card
-st.markdown("### Trade Summary")
-trade_card = f"""
-**Asset:** {asset}  
-**Date:** {date.strftime('%Y-%m-%d')}  
-**Entry:** {entry}  
-**Stop Loss:** {stop_loss}  
-**Take Profit:** {take_profit}  
-**Size:** £{position}  
-**Leverage:** {leverage}  
-**Exposure:** £{total_exposure}  
-**Risk:** £{risk:.2f}  
-**Reward:** £{reward:.2f}  
-**PnL:** £{pnl:.2f}  
-**RR Ratio:** {rr_ratio}:1  
-**Breakeven:** {breakeven}
-"""
-st.code(trade_card, language="markdown")
+        st.markdown("---")
+        st.markdown(f"**Live Entry:** ${entry}")
+        st.markdown(f"**Stop Loss:** ${stop_loss}")
+        st.markdown(f"**Take Profit:** ${take_profit}")
+        st.markdown(f"**Total Exposure:** £{total_exposure}")
+        st.markdown(f"**Risk:** £{risk:.2f}")
+        st.markdown(f"**Reward:** £{reward:.2f}")
+        st.markdown(f"**Breakeven:** {breakeven}")
+        st.markdown(f"**Reward:Risk Ratio:** {rr_ratio}:1")
 
-# Downloadable Trade Card
-st.download_button("Download Trade Card", trade_card, file_name=f"{asset}_trade_card.txt")
+    except Exception as e:
+        st.error(f"Error during calculation: {e}")
+else:
+    st.warning("Please fill in all inputs before calculating.")
