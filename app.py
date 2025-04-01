@@ -1,4 +1,3 @@
-
 import streamlit as st
 import requests
 import os
@@ -71,28 +70,31 @@ with col1:
 position = st.number_input("Position Size (Â£)", value=500.0)
 leverage = st.number_input("Leverage", value=20)
 
-# Auto-fetch price and auto-calculate SL/TP
+# --- Precision setup ---
+digits = precision_map.get(asset_symbol, 2)
+format_str = f"%.{digits}f"
+step_val = 10 ** (-digits)
+
+# --- Entry Price with live fetch ---
 try:
     live_price = get_crypto_price_from_coingecko(asset_display)
-    digits = precision_map.get(asset_symbol, 2)
     if live_price:
-        entry = st.number_input("Entry Price", value=round(live_price, digits), format=f"%.{digits}f")
-        stop_loss = st.number_input("Stop Loss", value=round(entry * 0.99, digits), format=f"%.{digits}f")
-        take_profit = st.number_input("Take Profit", value=round(entry * 1.02, digits), format=f"%.{digits}f")
+        entry = st.number_input("Entry Price", value=round(float(live_price), digits), step=step_val, format=format_str)
     else:
-        entry = st.number_input("Entry Price", value=82000.0)
-        stop_loss = st.number_input("Stop Loss", value=81000.0)
-        take_profit = st.number_input("Take Profit", value=83000.0)
+        entry = st.number_input("Entry Price", value=0.0, step=step_val, format=format_str)
 except:
-    entry = st.number_input("Entry Price", value=82000.0)
-    stop_loss = st.number_input("Stop Loss", value=81000.0)
-    take_profit = st.number_input("Take Profit", value=83000.0)
+    entry = st.number_input("Entry Price", value=0.0, step=step_val, format=format_str)
     live_price = "Not available"
 
+# Auto stop loss (-1%) and take profit (+2%)
+auto_stop_loss = round(entry * 0.99, digits)
+auto_take_profit = round(entry * 1.02, digits)
+
+stop_loss = st.number_input("Stop Loss", value=auto_stop_loss, step=step_val, format=format_str)
+take_profit = st.number_input("Take Profit", value=auto_take_profit, step=step_val, format=format_str)
 trade_date = datetime.now().strftime("%Y-%m-%d")
 
 # --- Calculations ---
-digits = precision_map.get(asset_symbol, 2)
 total_exposure = position * leverage
 risk = abs(entry - stop_loss) * total_exposure / entry
 reward = abs(take_profit - entry) * total_exposure / entry
@@ -144,4 +146,4 @@ if st.button("Download Trade Card"):
         data=buf.getvalue(),
         file_name=f"trade_card_{asset_symbol}_{trade_date}.png",
         mime="image/png"
-    )
+)
