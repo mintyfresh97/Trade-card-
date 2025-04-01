@@ -1,3 +1,4 @@
+
 import streamlit as st
 import requests
 import os
@@ -60,6 +61,7 @@ with col1:
     display_names = list(coingecko_ids.keys())
     asset_display = st.selectbox("Select Asset", display_names)
     asset_symbol = asset_display.split("(")[-1].replace(")", "").strip()
+    digits = precision_map.get(asset_symbol, 2)
 
     icon_path = f"assets/{icon_map.get(asset_symbol, '')}"
     if os.path.exists(icon_path):
@@ -70,28 +72,22 @@ with col1:
 position = st.number_input("Position Size (Â£)", value=500.0)
 leverage = st.number_input("Leverage", value=20)
 
-# --- Precision setup ---
-digits = precision_map.get(asset_symbol, 2)
-format_str = f"%.{digits}f"
-step_val = 10 ** (-digits)
-
-# --- Entry Price with live fetch ---
+# Auto-fetch and format price
 try:
     live_price = get_crypto_price_from_coingecko(asset_display)
     if live_price:
-        entry = st.number_input("Entry Price", value=round(float(live_price), digits), step=step_val, format=format_str)
+        entry_val = round(float(live_price), digits)
     else:
-        entry = st.number_input("Entry Price", value=0.0, step=step_val, format=format_str)
+        entry_val = round(82000.0, digits)
 except:
-    entry = st.number_input("Entry Price", value=0.0, step=step_val, format=format_str)
+    entry_val = round(82000.0, digits)
     live_price = "Not available"
 
-# Auto stop loss (-1%) and take profit (+2%)
-auto_stop_loss = round(entry * 0.99, digits)
-auto_take_profit = round(entry * 1.02, digits)
-
-stop_loss = st.number_input("Stop Loss", value=auto_stop_loss, step=step_val, format=format_str)
-take_profit = st.number_input("Take Profit", value=auto_take_profit, step=step_val, format=format_str)
+entry = st.number_input("Entry Price", value=entry_val, format=f"%.{digits}f")
+stop_loss_val = round(entry * 0.99, digits)
+take_profit_val = round(entry * 1.02, digits)
+stop_loss = st.number_input("Stop Loss", value=stop_loss_val, format=f"%.{digits}f")
+take_profit = st.number_input("Take Profit", value=take_profit_val, format=f"%.{digits}f")
 trade_date = datetime.now().strftime("%Y-%m-%d")
 
 # --- Calculations ---
