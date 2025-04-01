@@ -5,8 +5,7 @@ from datetime import datetime
 from PIL import Image, ImageDraw, ImageFont
 import io
 
-
-# CoinGecko ID mapping
+# CoinGecko ID mapping for Cryptocurrencies
 coingecko_ids = {
     'Bitcoin (BTC)': 'bitcoin',
     'Ethereum (ETH)': 'ethereum',
@@ -50,16 +49,6 @@ def get_crypto_price_from_coingecko(name):
         st.error(f"CoinGecko API Error for {name}: {e}")
         return None
 
-# Function to get stock price using Yahoo Finance
-def get_stock_price(symbol):
-    try:
-        stock = yf.Ticker(symbol)
-        data = stock.history(period='1d')
-        return data['Close'].iloc[-1]
-    except Exception as e:
-        st.error(f"Yahoo Finance Error for {symbol}: {e}")
-        return None
-
 # Set page layout
 st.set_page_config(page_title="PnL & Risk Dashboard", layout="wide")
 st.markdown("<h1 style='color:white;'>PnL & Risk Dashboard</h1>", unsafe_allow_html=True)
@@ -80,9 +69,7 @@ leverage = st.number_input("Leverage", value=20)
 
 # Auto-fetch price
 try:
-    api_id = asset.lower()
-    res = requests.get(f"https://api.coingecko.com/api/v3/simple/price?ids={api_id}&vs_currencies=usd")
-    live_price = res.json().get(api_id, {}).get("usd", None)
+    live_price = get_crypto_price_from_coingecko(asset)
     if live_price:
         entry = st.number_input("Entry Price", value=float(live_price))
     else:
