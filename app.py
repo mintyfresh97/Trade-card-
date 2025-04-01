@@ -20,7 +20,13 @@ icon_map = { "BTC": "bitcoin-btc-logo.png", "ETH": "ethereum-eth-logo.png", "XRP
 
 col1, col2 = st.columns([1, 2])
 
-with col1: asset = st.selectbox("Select Asset", list(precision_map.keys())) icon_path = f"assets/{icon_map.get(asset, '')}" if os.path.exists(icon_path): st.image(icon_path, width=32) else: st.warning("Icon not found")
+with col1: 
+    asset = 
+    st.selectbox("Select Asset", list(precision_map.keys())) 
+    icon_path = f"assets/{icon_map.get(asset, '')}" 
+    if os.path.exists(icon_path):
+        st.image(icon_path, width=32) else: 
+        st.warning("Icon not found")
 
 position = st.number_input("Position Size (£)", value=500.0)
 leverage = st.number_input("Leverage", value=20)
