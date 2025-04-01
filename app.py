@@ -1,7 +1,7 @@
 import streamlit as st
-import requests 
-import os 
-from datetime import datetime 
+import requests
+import os
+from datetime import datetime
 from PIL import Image, ImageDraw, ImageFont
 import io
 
@@ -16,20 +16,20 @@ precision_map = {
 }
 
 icon_map = {
-    "BTC": "bitcoin-btc-logo.png", "ETH": "ethereum-eth-logo.png", 
-    "XRP": "xrp-xrp-logo.png", "ADA": "cardano-ada-logo.png", 
-    "SOL": "solana-sol-logo.png", "LINK": "chainlink-link-logo.png", 
-    "ONDO": "ondo-finance-ondo-logo.png", "CRV": "curve-dao-token-crv-logo.png", 
-    "CVX": "convex-finance-cvx-logo.png", "SUI": "sui-sui-logo.png", 
+    "BTC": "bitcoin-btc-logo.png", "ETH": "ethereum-eth-logo.png",
+    "XRP": "xrp-xrp-logo.png", "ADA": "cardano-ada-logo.png",
+    "SOL": "solana-sol-logo.png", "LINK": "chainlink-link-logo.png",
+    "ONDO": "ondo-finance-ondo-logo.png", "CRV": "curve-dao-token-crv-logo.png",
+    "CVX": "convex-finance-cvx-logo.png", "SUI": "sui-sui-logo.png",
     "FARTCOIN": "fartcoin-logo.png"
 }
 
 # --- Input fields ---
 col1, col2 = st.columns([1, 2])
 
-with col1: 
-    asset = st.selectbox("Select Asset", list(precision_map.keys())) 
-    icon_path = f"assets/{icon_map.get(asset, '')}" 
+with col1:
+    asset = st.selectbox("Select Asset", list(precision_map.keys()))
+    icon_path = f"assets/{icon_map.get(asset, '')}"
     if os.path.exists(icon_path):
         st.image(icon_path, width=32)
     else:
@@ -64,7 +64,7 @@ breakeven = round((entry + stop_loss) / 2, digits)
 rr_ratio = round(reward / risk, 2) if risk != 0 else 0
 
 # --- Display Trade Card ---
-with col2: 
+with col2:
     st.subheader("Trade Card")
     st.markdown(f"Asset: {asset}")
     st.markdown(f"Live Price: {live_price if live_price else 'N/A'}")
