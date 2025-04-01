@@ -9,13 +9,13 @@ import io
 
 coingecko_ids = { 'Bitcoin (BTC)': 'bitcoin', 'Ethereum (ETH)': 'ethereum', 'XRP (XRP)': 'ripple', 'Solana (SOL)': 'solana', 'Cardano (ADA)': 'cardano', 'Chainlink (LINK)': 'chainlink', 'Curve (CRV)': 'curve-dao-token', 'Convex (CVX)': 'convex-finance', 'Sui (SUI)': 'sui', 'Fartcoin (FARTCOIN)': 'fartcoin', 'Ondo (ONDO)': 'ondo-finance' }
 
-Asset precision and icon filenames
+#Asset precision and icon filenames
 
 precision_map = { "BTC": 5, "ETH": 4, "XRP": 3, "ADA": 3, "SOL": 5, "LINK": 3, "ONDO": 3, "CRV": 3, "CVX": 3, "SUI": 3, "FARTCOIN": 3 }
 
 icon_map = { "BTC": "bitcoin-btc-logo.png", "ETH": "ethereum-eth-logo.png", "XRP": "xrp-xrp-logo.png", "ADA": "cardano-ada-logo.png", "SOL": "solana-sol-logo.png", "LINK": "chainlink-link-logo.png", "ONDO": "ondo-finance-ondo-logo.png", "CRV": "curve-dao-token-crv-logo.png", "CVX": "convex-finance-cvx-logo.png", "SUI": "sui-sui-logo.png", "FARTCOIN": "fartcoin-logo.png" }
 
-Function to get cryptocurrency price from CoinGecko
+#Function to get cryptocurrency price from CoinGecko
 
 def get_crypto_price_from_coingecko(name): try: coin_id = coingecko_ids.get(name) if not coin_id: raise ValueError("Unknown CoinGecko ID") url = f"https://api.coingecko.com/api/v3/simple/price?ids={coin_id}&vs_currencies=usd" response = requests.get(url, timeout=5) data = response.json() return data[coin_id]['usd'] except Exception as e: st.error(f"CoinGecko API Error for {name}: {e}") return None
 
