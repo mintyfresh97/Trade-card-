@@ -4,7 +4,7 @@ import os
 from datetime import datetime
 from PIL import Image, ImageDraw, ImageFont
 import io
-import yfinance as yf
+
 
 # CoinGecko ID mapping
 coingecko_ids = {
