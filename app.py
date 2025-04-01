@@ -22,11 +22,6 @@ coingecko_ids = {
 }
 
 # Asset precision and icon filenames
-precision_map = {
-    "BTC": 5, "ETH": 4, "XRP": 3, "ADA": 3, "SOL": 5, "LINK": 3,
-    "ONDO": 3, "CRV": 3, "CVX": 3, "SUI": 3, "FARTCOIN": 3
-}
-
 icon_map = {
     "BTC": "bitcoin-btc-logo.png", "ETH": "ethereum-eth-logo.png", 
     "XRP": "xrp-xrp-logo.png", "ADA": "cardano-ada-logo.png", 
@@ -45,7 +40,7 @@ def get_crypto_price_from_coingecko(name):
         url = f"https://api.coingecko.com/api/v3/simple/price?ids={coin_id}&vs_currencies=usd"
         response = requests.get(url, timeout=5)
         data = response.json()
-        return data[coin_id]['usd']
+        return round(data[coin_id]['usd'], 2)
     except Exception as e:
         st.error(f"CoinGecko API Error for {name}: {e}")
         return None
@@ -61,7 +56,6 @@ with col1:
     display_names = list(coingecko_ids.keys())
     asset_display = st.selectbox("Select Asset", display_names)
     asset_symbol = asset_display.split("(")[-1].replace(")", "").strip()
-    digits = precision_map.get(asset_symbol, 2)
 
     icon_path = f"assets/{icon_map.get(asset_symbol, '')}"
     if os.path.exists(icon_path):
@@ -72,29 +66,28 @@ with col1:
 position = st.number_input("Position Size (Â£)", value=500.0)
 leverage = st.number_input("Leverage", value=20)
 
-# Auto-fetch and format price
+# Auto-fetch price
 try:
     live_price = get_crypto_price_from_coingecko(asset_display)
     if live_price:
-        entry_val = round(float(live_price), digits)
+        entry = st.number_input("Entry Price", value=live_price, format="%.2f")
     else:
-        entry_val = round(82000.0, digits)
+        entry = st.number_input("Entry Price", value=82000.0, format="%.2f")
 except:
-    entry_val = round(82000.0, digits)
+    entry = st.number_input("Entry Price", value=82000.0, format="%.2f")
     live_price = "Not available"
 
-entry = st.number_input("Entry Price", value=entry_val, format=f"%.{digits}f")
-stop_loss_val = round(entry * 0.99, digits)
-take_profit_val = round(entry * 1.02, digits)
-stop_loss = st.number_input("Stop Loss", value=stop_loss_val, format=f"%.{digits}f")
-take_profit = st.number_input("Take Profit", value=take_profit_val, format=f"%.{digits}f")
+# Auto-calculate Stop Loss and Take Profit
+stop_loss = st.number_input("Stop Loss", value=round(entry * 0.99, 2), format="%.2f")
+take_profit = st.number_input("Take Profit", value=round(entry * 1.02, 2), format="%.2f")
+
 trade_date = datetime.now().strftime("%Y-%m-%d")
 
 # --- Calculations ---
 total_exposure = position * leverage
 risk = abs(entry - stop_loss) * total_exposure / entry
 reward = abs(take_profit - entry) * total_exposure / entry
-breakeven = round((entry + stop_loss) / 2, digits)
+breakeven = round((entry + stop_loss) / 2, 2)
 rr_ratio = round(reward / risk, 2) if risk != 0 else 0
 
 # --- Display Trade Card ---
@@ -142,4 +135,4 @@ if st.button("Download Trade Card"):
         data=buf.getvalue(),
         file_name=f"trade_card_{asset_symbol}_{trade_date}.png",
         mime="image/png"
-)
+    )
