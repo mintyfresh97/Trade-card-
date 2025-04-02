@@ -94,36 +94,36 @@ reward = abs(take_profit - entry) * total_exposure / entry
 breakeven = round((entry + stop_loss) / 2, 2)
 rr_ratio = round(reward / risk, 2) if risk != 0 else 0
 
-with col2:
-    st.subheader("Trade Card")
-    st.markdown(f"Asset: {asset_symbol}")
-    st.markdown(f"Live Price: {live_price if live_price else 'N/A'}")
-    st.markdown(f"Position: Â£{position}")
-    st.markdown(f"Leverage: {leverage}x")
-    st.markdown(f"Entry: {entry}")
-    st.markdown(f"Stop Loss: {stop_loss}")
-    st.markdown(f"Take Profit: {take_profit}")
-    st.markdown(f"Risk: Â£{risk:.2f}")
-    st.markdown(f"Reward: Â£{reward:.2f}")
-    st.markdown(f"RR Ratio: {rr_ratio}:1")
-    st.markdown(f"Breakeven: {breakeven}",
-            f"Entry TF: {entry_tf}",
-            f"Analysis TF: {analysis_tf}")
-    st.markdown(f"Date: {trade_date}")
+
+    with col2:
+        st.subheader("Trade Card")
+        st.markdown(f"Asset: {asset_symbol}")
+        st.markdown(f"Live Price: {live_price if live_price else 'N/A'}")
+        st.markdown(f"Position: Â£{position}")
+        st.markdown(f"Leverage: {leverage}x")
+        st.markdown(f"Entry: {entry}")
+        st.markdown(f"Stop Loss: {stop_loss}")
+        st.markdown(f"Take Profit: {take_profit}")
+        st.markdown(f"Risk: Â£{risk:.2f}")
+        st.markdown(f"Reward: Â£{reward:.2f}")
+        st.markdown(f"RR Ratio: {rr_ratio}:1")
+        st.markdown(f"Breakeven: {breakeven}")
+        st.markdown(f"Date: {trade_date}")
         st.markdown(f"Entry TF: {entry_tf}")
         st.markdown(f"Analysis TF: {analysis_tf}")
-    if strategy:
-        st.markdown(f"**Strategy:** {strategy}")
-    if news:
-        st.markdown(f"**News Catalyst:** {news}")
-    if execution:
-        st.markdown(f"**Execution Plan:** {execution}")
-    if psychology:
-        st.markdown(f"**Psychology Reminder:** {psychology}")
-    if tags:
-        st.markdown(f"**Tags:** {', '.join(tags)}")
+        if strategy:
+            st.markdown(f"**Strategy:** {strategy}")
+        if news:
+            st.markdown(f"**News Catalyst:** {news}")
+        if execution:
+            st.markdown(f"**Execution Plan:** {execution}")
+        if psychology:
+            st.markdown(f"**Psychology Reminder:** {psychology}")
+        if tags:
+            st.markdown(f"**Tags:** {', '.join(tags)}")
 
-if st.button("Download Trade Card"):
+
+    if st.button("Download Trade Card"):
     # Prepare all lines first
     lines = [
         f"Asset: {asset_symbol}",
