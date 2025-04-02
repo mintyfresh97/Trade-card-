@@ -140,8 +140,30 @@ if st.button("Download Trade Card"):
         except Exception as e:
             st.warning(f"Could not load logo: {e}")
 
-    lines = [
+lines = [
         f"Asset: {asset_symbol}",
+        f"Date: {trade_date}",
+        f"Live Price: {live_price}",
+        f"Entry: {entry}",
+        f"Stop: {stop_loss}",
+        f"Target: {take_profit}",
+        f"Risk: Â£{risk:.2f}",
+        f"Reward: Â£{reward:.2f}",
+        f"RR Ratio: {rr_ratio}:1",
+        f"Breakeven: {breakeven}"
+    ]
+
+    # Add wrapped notes (max 40 chars wide per line)
+    if strategy:
+        lines.extend(textwrap.wrap(f"Strategy: {strategy}", width=40))
+    if news:
+        lines.extend(textwrap.wrap(f"News: {news}", width=40))
+    if execution:
+        lines.extend(textwrap.wrap(f"Exec Plan: {execution}", width=40))
+    if psychology:
+        lines.extend(textwrap.wrap(f"Mindset: {psychology}", width=40))
+    if tags:
+        lines.extend(textwrap.wrap(f"Tags: {', '.join(tags)}", width=40))
         f"Date: {trade_date}",
         f"Live Price: {live_price}",
         f"Entry: {entry}",
@@ -174,4 +196,4 @@ if st.button("Download Trade Card"):
         data=buf.getvalue(),
         file_name=f"trade_card_{asset_symbol}_{trade_date}.png",
         mime="image/png"
-    )
+)
