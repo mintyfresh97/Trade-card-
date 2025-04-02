@@ -22,7 +22,6 @@ coingecko_ids = {
     'Ondo (ONDO)': 'ondo-finance'
 }
 
-# Asset precision and icon filenames
 icon_map = {
     "BTC": "bitcoin-btc-logo.png", "ETH": "ethereum-eth-logo.png",
     "XRP": "xrp-xrp-logo.png", "ADA": "cardano-ada-logo.png",
@@ -32,7 +31,6 @@ icon_map = {
     "FARTCOIN": "fartcoin-logo.png"
 }
 
-# Function to get cryptocurrency price from CoinGecko
 def get_crypto_price_from_coingecko(name):
     try:
         coin_id = coingecko_ids.get(name)
@@ -46,11 +44,9 @@ def get_crypto_price_from_coingecko(name):
         st.error(f"CoinGecko API Error for {name}: {e}")
         return None
 
-# Set page layout
 st.set_page_config(page_title="PnL & Risk Dashboard", layout="wide")
 st.markdown("<h1 style='color:white;'>PnL & Risk Dashboard</h1>", unsafe_allow_html=True)
 
-# --- Input fields ---
 col1, col2 = st.columns([1, 2])
 
 with col1:
@@ -67,7 +63,6 @@ with col1:
 position = st.number_input("Position Size (Â£)", value=500.0)
 leverage = st.number_input("Leverage", value=20)
 
-# Auto-fetch price
 try:
     live_price = get_crypto_price_from_coingecko(asset_display)
     if live_price:
@@ -78,11 +73,9 @@ except:
     entry = st.number_input("Entry Price", value=82000.0, format="%.2f")
     live_price = "Not available"
 
-# Auto-calculate Stop Loss and Take Profit
 stop_loss = st.number_input("Stop Loss", value=round(entry * 0.99, 2), format="%.2f")
 take_profit = st.number_input("Take Profit", value=round(entry * 1.02, 2), format="%.2f")
 
-# --- Structured Trade Notes ---
 st.markdown("### Trade Notes")
 strategy = st.text_input("Trade Strategy", placeholder="e.g. EMA Bounce, Breakout Rejection")
 news = st.text_input("News Catalyst", placeholder="e.g. FOMC, ETF Approval, CPI Report")
@@ -92,14 +85,12 @@ tags = st.multiselect("Tags", options=["Scalp", "Swing", "Long", "Short", "1H", 
 
 trade_date = datetime.now().strftime("%Y-%m-%d")
 
-# --- Calculations ---
 total_exposure = position * leverage
 risk = abs(entry - stop_loss) * total_exposure / entry
 reward = abs(take_profit - entry) * total_exposure / entry
 breakeven = round((entry + stop_loss) / 2, 2)
 rr_ratio = round(reward / risk, 2) if risk != 0 else 0
 
-# --- Display Trade Card ---
 with col2:
     st.subheader("Trade Card")
     st.markdown(f"Asset: {asset_symbol}")
@@ -125,13 +116,11 @@ with col2:
     if tags:
         st.markdown(f"**Tags:** {', '.join(tags)}")
 
-# --- Downloadable Image ---
 if st.button("Download Trade Card"):
     img = Image.new("RGB", (600, 450), color=(30, 30, 30))
     draw = ImageDraw.Draw(img)
     font = ImageFont.load_default()
 
-    # Load and paste the asset logo
     logo_path = f"assets/{icon_map.get(asset_symbol, '')}"
     if os.path.exists(logo_path):
         try:
@@ -140,7 +129,7 @@ if st.button("Download Trade Card"):
         except Exception as e:
             st.warning(f"Could not load logo: {e}")
 
-lines = [
+    lines = [
         f"Asset: {asset_symbol}",
         f"Date: {trade_date}",
         f"Live Price: {live_price}",
@@ -153,7 +142,6 @@ lines = [
         f"Breakeven: {breakeven}"
     ]
 
-    # Add wrapped notes (max 40 chars wide per line)
     if strategy:
         lines.extend(textwrap.wrap(f"Strategy: {strategy}", width=40))
     if news:
@@ -164,27 +152,6 @@ lines = [
         lines.extend(textwrap.wrap(f"Mindset: {psychology}", width=40))
     if tags:
         lines.extend(textwrap.wrap(f"Tags: {', '.join(tags)}", width=40))
-        f"Date: {trade_date}",
-        f"Live Price: {live_price}",
-        f"Entry: {entry}",
-        f"Stop: {stop_loss}",
-        f"Target: {take_profit}",
-        f"Risk: Â£{risk:.2f}",
-        f"Reward: Â£{reward:.2f}",
-        f"RR Ratio: {rr_ratio}:1",
-        f"Breakeven: {breakeven}"
-    ]
-
-    if strategy:
-        lines.extend(textwrap.wrap(f"Strategy: {strategy}", width=40))
-    if news:
-        lines.extend(textwrap.wrap(f"News: {news}", width=40))
-    if execution:
-        lines.extend(textwrap.wrap(f"Exec Plan: {execution}", width=40))
-    if psychology:
-        lines.extend(textwrap.wrap(f"Mindset: {psychology}", width=40))
-    if tags:
-        lines.append(f"Tags: {', '.join(tags)}")
 
     for i, line in enumerate(lines):
         draw.text((20, 100 + i * 30), line, fill=(255, 255, 255), font=font)
