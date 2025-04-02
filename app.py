@@ -7,7 +7,6 @@ from PIL import Image, ImageDraw, ImageFont
 import io
 import textwrap
 
-# CoinGecko ID mapping for Cryptocurrencies
 coingecko_ids = {
     'Bitcoin (BTC)': 'bitcoin',
     'Ethereum (ETH)': 'ethereum',
@@ -117,18 +116,7 @@ with col2:
         st.markdown(f"**Tags:** {', '.join(tags)}")
 
 if st.button("Download Trade Card"):
-    img = Image.new("RGB", (600, 450), color=(30, 30, 30))
-    draw = ImageDraw.Draw(img)
-    font = ImageFont.load_default()
-
-    logo_path = f"assets/{icon_map.get(asset_symbol, '')}"
-    if os.path.exists(logo_path):
-        try:
-            logo = Image.open(logo_path).convert("RGBA").resize((64, 64))
-            img.paste(logo, (520, 20), logo)
-        except Exception as e:
-            st.warning(f"Could not load logo: {e}")
-
+    # Prepare all lines first
     lines = [
         f"Asset: {asset_symbol}",
         f"Date: {trade_date}",
@@ -153,8 +141,24 @@ if st.button("Download Trade Card"):
     if tags:
         lines.extend(textwrap.wrap(f"Tags: {', '.join(tags)}", width=40))
 
+    # Calculate required image height
+    line_height = 30
+    image_height = 120 + line_height * len(lines)
+    img = Image.new("RGB", (600, image_height), color=(25, 25, 25))
+    draw = ImageDraw.Draw(img)
+    font = ImageFont.load_default()
+
+    # Logo
+    logo_path = f"assets/{icon_map.get(asset_symbol, '')}"
+    if os.path.exists(logo_path):
+        try:
+            logo = Image.open(logo_path).convert("RGBA").resize((64, 64))
+            img.paste(logo, (520, 20), logo)
+        except Exception as e:
+            st.warning(f"Could not load logo: {e}")
+
     for i, line in enumerate(lines):
-        draw.text((20, 100 + i * 30), line, fill=(255, 255, 255), font=font)
+        draw.text((20, 100 + i * line_height), line, fill=(255, 255, 255), font=font)
 
     buf = io.BytesIO()
     img.save(buf, format="PNG")
@@ -163,4 +167,4 @@ if st.button("Download Trade Card"):
         data=buf.getvalue(),
         file_name=f"trade_card_{asset_symbol}_{trade_date}.png",
         mime="image/png"
-    )
+)
