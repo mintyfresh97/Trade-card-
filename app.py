@@ -7,6 +7,7 @@ from PIL import Image, ImageDraw, ImageFont
 import io
 import textwrap
 
+# CoinGecko ID mapping
 coingecko_ids = {
     'Bitcoin (BTC)': 'bitcoin',
     'Ethereum (ETH)': 'ethereum',
@@ -21,6 +22,7 @@ coingecko_ids = {
     'Ondo (ONDO)': 'ondo-finance'
 }
 
+# Asset icons
 icon_map = {
     "BTC": "bitcoin-btc-logo.png", "ETH": "ethereum-eth-logo.png",
     "XRP": "xrp-xrp-logo.png", "ADA": "cardano-ada-logo.png",
@@ -43,16 +45,17 @@ def get_crypto_price_from_coingecko(name):
         st.error(f"CoinGecko API Error for {name}: {e}")
         return None
 
+# Page setup
 st.set_page_config(page_title="PnL & Risk Dashboard", layout="wide")
 st.markdown("<h1 style='color:white;'>PnL & Risk Dashboard</h1>", unsafe_allow_html=True)
 
+# Layout
 col1, col2 = st.columns([1, 2])
 
 with col1:
     display_names = list(coingecko_ids.keys())
     asset_display = st.selectbox("Select Asset", display_names)
     asset_symbol = asset_display.split("(")[-1].replace(")", "").strip()
-
     icon_path = f"assets/{icon_map.get(asset_symbol, '')}"
     if os.path.exists(icon_path):
         st.image(icon_path, width=32)
@@ -75,10 +78,12 @@ except:
 stop_loss = st.number_input("Stop Loss", value=round(entry * 0.99, 2), format="%.2f")
 take_profit = st.number_input("Take Profit", value=round(entry * 1.02, 2), format="%.2f")
 
+# Timeframes
 timeframes = ["1m", "5m", "15m", "1h", "4h", "Daily"]
 entry_tf = st.selectbox("Entry Timeframe", options=timeframes, index=1)
 analysis_tf = st.selectbox("Analysis Timeframe", options=timeframes, index=2)
 
+# Notes
 st.markdown("### Trade Notes")
 strategy = st.text_input("Trade Strategy", placeholder="e.g. EMA Bounce, Breakout Rejection")
 news = st.text_input("News Catalyst", placeholder="e.g. FOMC, ETF Approval, CPI Report")
@@ -86,45 +91,44 @@ execution = st.text_input("Execution Plan", placeholder="e.g. Enter on candle cl
 psychology = st.text_input("Psychology Reminder", placeholder="e.g. Stick to plan, avoid revenge trading")
 tags = st.multiselect("Tags", options=["Scalp", "Swing", "Long", "Short", "1H", "4H", "Daily", "Breakout", "Rejection"])
 
+# Calculations
 trade_date = datetime.now().strftime("%Y-%m-%d")
-
 total_exposure = position * leverage
 risk = abs(entry - stop_loss) * total_exposure / entry
 reward = abs(take_profit - entry) * total_exposure / entry
 breakeven = round((entry + stop_loss) / 2, 2)
 rr_ratio = round(reward / risk, 2) if risk != 0 else 0
 
+# Trade Card Preview
+with col2:
+    st.subheader("Trade Card")
+    st.markdown(f"Asset: {asset_symbol}")
+    st.markdown(f"Live Price: {live_price if live_price else 'N/A'}")
+    st.markdown(f"Position: Â£{position}")
+    st.markdown(f"Leverage: {leverage}x")
+    st.markdown(f"Entry: {entry}")
+    st.markdown(f"Stop Loss: {stop_loss}")
+    st.markdown(f"Take Profit: {take_profit}")
+    st.markdown(f"Risk: Â£{risk:.2f}")
+    st.markdown(f"Reward: Â£{reward:.2f}")
+    st.markdown(f"RR Ratio: {rr_ratio}:1")
+    st.markdown(f"Breakeven: {breakeven}")
+    st.markdown(f"Date: {trade_date}")
+    st.markdown(f"Entry TF: {entry_tf}")
+    st.markdown(f"Analysis TF: {analysis_tf}")
+    if strategy:
+        st.markdown(f"**Strategy:** {strategy}")
+    if news:
+        st.markdown(f"**News Catalyst:** {news}")
+    if execution:
+        st.markdown(f"**Execution Plan:** {execution}")
+    if psychology:
+        st.markdown(f"**Psychology Reminder:** {psychology}")
+    if tags:
+        st.markdown(f"**Tags:** {', '.join(tags)}")
 
-    with col2:
-        st.subheader("Trade Card")
-        st.markdown(f"Asset: {asset_symbol}")
-        st.markdown(f"Live Price: {live_price if live_price else 'N/A'}")
-        st.markdown(f"Position: Â£{position}")
-        st.markdown(f"Leverage: {leverage}x")
-        st.markdown(f"Entry: {entry}")
-        st.markdown(f"Stop Loss: {stop_loss}")
-        st.markdown(f"Take Profit: {take_profit}")
-        st.markdown(f"Risk: Â£{risk:.2f}")
-        st.markdown(f"Reward: Â£{reward:.2f}")
-        st.markdown(f"RR Ratio: {rr_ratio}:1")
-        st.markdown(f"Breakeven: {breakeven}")
-        st.markdown(f"Date: {trade_date}")
-        st.markdown(f"Entry TF: {entry_tf}")
-        st.markdown(f"Analysis TF: {analysis_tf}")
-        if strategy:
-            st.markdown(f"**Strategy:** {strategy}")
-        if news:
-            st.markdown(f"**News Catalyst:** {news}")
-        if execution:
-            st.markdown(f"**Execution Plan:** {execution}")
-        if psychology:
-            st.markdown(f"**Psychology Reminder:** {psychology}")
-        if tags:
-            st.markdown(f"**Tags:** {', '.join(tags)}")
-
-
-    if st.button("Download Trade Card"):
-    # Prepare all lines first
+# Image Export
+if st.button("Download Trade Card"):
     lines = [
         f"Asset: {asset_symbol}",
         f"Date: {trade_date}",
@@ -136,8 +140,8 @@ rr_ratio = round(reward / risk, 2) if risk != 0 else 0
         f"Reward: Â£{reward:.2f}",
         f"RR Ratio: {rr_ratio}:1",
         f"Breakeven: {breakeven}",
-            f"Entry TF: {entry_tf}",
-            f"Analysis TF: {analysis_tf}"
+        f"Entry TF: {entry_tf}",
+        f"Analysis TF: {analysis_tf}"
     ]
 
     if strategy:
@@ -151,14 +155,12 @@ rr_ratio = round(reward / risk, 2) if risk != 0 else 0
     if tags:
         lines.extend(textwrap.wrap(f"Tags: {', '.join(tags)}", width=40))
 
-    # Calculate required image height
     line_height = 30
     image_height = 120 + line_height * len(lines)
     img = Image.new("RGB", (600, image_height), color=(25, 25, 25))
     draw = ImageDraw.Draw(img)
     font = ImageFont.load_default()
 
-    # Logo
     logo_path = f"assets/{icon_map.get(asset_symbol, '')}"
     if os.path.exists(logo_path):
         try:
