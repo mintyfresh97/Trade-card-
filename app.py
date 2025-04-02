@@ -1,3 +1,4 @@
+
 import streamlit as st
 import requests
 import os
@@ -38,9 +39,8 @@ def get_crypto_price_from_coingecko(name):
         url = f"https://api.coingecko.com/api/v3/simple/price?ids={coin_id}&vs_currencies=usd"
         response = requests.get(url, timeout=5)
         data = response.json()
-        return round(data[coin_id]['usd'], 2)
+        return round(data.get(coin_id, {}).get("usd", 0.0), 2)
     except Exception as e:
-        st.error(f"CoinGecko API Error for {name}: {e}")
         return None
 
 st.set_page_config(page_title="PnL & Risk Dashboard", layout="wide")
@@ -61,16 +61,8 @@ with col1:
 position = st.number_input("Position Size (Â£)", value=500.0)
 leverage = st.number_input("Leverage", value=20)
 
-try:
-    live_price = get_crypto_price_from_coingecko(asset_display)
-    if live_price:
-        entry = st.number_input("Entry Price", value=live_price, format="%.2f")
-    else:
-        entry = st.number_input("Entry Price", value=82000.0, format="%.2f")
-except:
-    entry = st.number_input("Entry Price", value=82000.0, format="%.2f")
-    live_price = "Not available"
-
+live_price = get_crypto_price_from_coingecko(asset_display)
+entry = st.number_input("Entry Price", value=live_price if live_price else 82000.0, format="%.2f")
 stop_loss = st.number_input("Stop Loss", value=round(entry * 0.99, 2), format="%.2f")
 take_profit = st.number_input("Take Profit", value=round(entry * 1.02, 2), format="%.2f")
 profit_target = st.number_input("Profit Target %", min_value=0.0, max_value=500.0, value=2.0)
@@ -86,7 +78,7 @@ rr_ratio = round(reward / risk, 2) if risk != 0 else 0
 with col2:
     st.subheader("Trade Card")
     st.markdown(f"Asset: {asset_symbol}")
-    st.markdown(f"Live Price: {live_price if live_price else 'N/A'}")
+    st.markdown(f"Live Price: Â£{live_price}")
     st.markdown(f"Position: Â£{position}")
     st.markdown(f"Leverage: {leverage}x")
     st.markdown(f"Entry: {entry}")
