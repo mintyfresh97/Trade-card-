@@ -1,3 +1,4 @@
+
 import streamlit as st
 import requests
 import os
@@ -107,9 +108,18 @@ with col2:
 
 # --- Downloadable Image ---
 if st.button("Download Trade Card"):
-    img = Image.new("RGB", (600, 400), color=(30, 30, 30))
+    img = Image.new("RGB", (600, 450), color=(30, 30, 30))
     draw = ImageDraw.Draw(img)
     font = ImageFont.load_default()
+
+    # Load and paste the asset logo
+    logo_path = f"assets/{icon_map.get(asset_symbol, '')}"
+    if os.path.exists(logo_path):
+        try:
+            logo = Image.open(logo_path).convert("RGBA").resize((64, 64))
+            img.paste(logo, (520, 20), logo)
+        except Exception as e:
+            st.warning(f"Could not load logo: {e}")
 
     lines = [
         f"Asset: {asset_symbol}",
@@ -125,7 +135,7 @@ if st.button("Download Trade Card"):
     ]
 
     for i, line in enumerate(lines):
-        draw.text((20, 20 + i * 30), line, fill=(255, 255, 255), font=font)
+        draw.text((20, 100 + i * 30), line, fill=(255, 255, 255), font=font)
 
     buf = io.BytesIO()
     img.save(buf, format="PNG")
@@ -134,4 +144,4 @@ if st.button("Download Trade Card"):
         data=buf.getvalue(),
         file_name=f"trade_card_{asset_symbol}_{trade_date}.png",
         mime="image/png"
-    )
+)
