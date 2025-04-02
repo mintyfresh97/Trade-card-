@@ -75,6 +75,10 @@ except:
 stop_loss = st.number_input("Stop Loss", value=round(entry * 0.99, 2), format="%.2f")
 take_profit = st.number_input("Take Profit", value=round(entry * 1.02, 2), format="%.2f")
 
+timeframes = ["1m", "5m", "15m", "1h", "4h", "Daily"]
+entry_tf = st.selectbox("Entry Timeframe", options=timeframes, index=1)
+analysis_tf = st.selectbox("Analysis Timeframe", options=timeframes, index=2)
+
 st.markdown("### Trade Notes")
 strategy = st.text_input("Trade Strategy", placeholder="e.g. EMA Bounce, Breakout Rejection")
 news = st.text_input("News Catalyst", placeholder="e.g. FOMC, ETF Approval, CPI Report")
@@ -102,8 +106,12 @@ with col2:
     st.markdown(f"Risk: Â£{risk:.2f}")
     st.markdown(f"Reward: Â£{reward:.2f}")
     st.markdown(f"RR Ratio: {rr_ratio}:1")
-    st.markdown(f"Breakeven: {breakeven}")
+    st.markdown(f"Breakeven: {breakeven}",
+            f"Entry TF: {entry_tf}",
+            f"Analysis TF: {analysis_tf}")
     st.markdown(f"Date: {trade_date}")
+        st.markdown(f"Entry TF: {entry_tf}")
+        st.markdown(f"Analysis TF: {analysis_tf}")
     if strategy:
         st.markdown(f"**Strategy:** {strategy}")
     if news:
@@ -127,7 +135,9 @@ if st.button("Download Trade Card"):
         f"Risk: Â£{risk:.2f}",
         f"Reward: Â£{reward:.2f}",
         f"RR Ratio: {rr_ratio}:1",
-        f"Breakeven: {breakeven}"
+        f"Breakeven: {breakeven}",
+            f"Entry TF: {entry_tf}",
+            f"Analysis TF: {analysis_tf}"
     ]
 
     if strategy:
@@ -167,4 +177,4 @@ if st.button("Download Trade Card"):
         data=buf.getvalue(),
         file_name=f"trade_card_{asset_symbol}_{trade_date}.png",
         mime="image/png"
-)
+    )
