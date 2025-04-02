@@ -196,4 +196,4 @@ lines = [
         data=buf.getvalue(),
         file_name=f"trade_card_{asset_symbol}_{trade_date}.png",
         mime="image/png"
-)
+    )
