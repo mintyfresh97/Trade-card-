@@ -5,6 +5,7 @@ import os
 from datetime import datetime
 from PIL import Image, ImageDraw, ImageFont
 import io
+import textwrap
 
 # CoinGecko ID mapping for Cryptocurrencies
 coingecko_ids = {
@@ -23,11 +24,11 @@ coingecko_ids = {
 
 # Asset precision and icon filenames
 icon_map = {
-    "BTC": "bitcoin-btc-logo.png", "ETH": "ethereum-eth-logo.png", 
-    "XRP": "xrp-xrp-logo.png", "ADA": "cardano-ada-logo.png", 
-    "SOL": "solana-sol-logo.png", "LINK": "chainlink-link-logo.png", 
-    "ONDO": "ondo-finance-ondo-logo.png", "CRV": "curve-dao-token-crv-logo.png", 
-    "CVX": "convex-finance-cvx-logo.png", "SUI": "sui-sui-logo.png", 
+    "BTC": "bitcoin-btc-logo.png", "ETH": "ethereum-eth-logo.png",
+    "XRP": "xrp-xrp-logo.png", "ADA": "cardano-ada-logo.png",
+    "SOL": "solana-sol-logo.png", "LINK": "chainlink-link-logo.png",
+    "ONDO": "ondo-finance-ondo-logo.png", "CRV": "curve-dao-token-crv-logo.png",
+    "CVX": "convex-finance-cvx-logo.png", "SUI": "sui-sui-logo.png",
     "FARTCOIN": "fartcoin-logo.png"
 }
 
@@ -81,6 +82,14 @@ except:
 stop_loss = st.number_input("Stop Loss", value=round(entry * 0.99, 2), format="%.2f")
 take_profit = st.number_input("Take Profit", value=round(entry * 1.02, 2), format="%.2f")
 
+# --- Structured Trade Notes ---
+st.markdown("### Trade Notes")
+strategy = st.text_input("Trade Strategy", placeholder="e.g. EMA Bounce, Breakout Rejection")
+news = st.text_input("News Catalyst", placeholder="e.g. FOMC, ETF Approval, CPI Report")
+execution = st.text_input("Execution Plan", placeholder="e.g. Enter on candle close, SL below wick")
+psychology = st.text_input("Psychology Reminder", placeholder="e.g. Stick to plan, avoid revenge trading")
+tags = st.multiselect("Tags", options=["Scalp", "Swing", "Long", "Short", "1H", "4H", "Daily", "Breakout", "Rejection"])
+
 trade_date = datetime.now().strftime("%Y-%m-%d")
 
 # --- Calculations ---
@@ -105,6 +114,16 @@ with col2:
     st.markdown(f"RR Ratio: {rr_ratio}:1")
     st.markdown(f"Breakeven: {breakeven}")
     st.markdown(f"Date: {trade_date}")
+    if strategy:
+        st.markdown(f"**Strategy:** {strategy}")
+    if news:
+        st.markdown(f"**News Catalyst:** {news}")
+    if execution:
+        st.markdown(f"**Execution Plan:** {execution}")
+    if psychology:
+        st.markdown(f"**Psychology Reminder:** {psychology}")
+    if tags:
+        st.markdown(f"**Tags:** {', '.join(tags)}")
 
 # --- Downloadable Image ---
 if st.button("Download Trade Card"):
@@ -134,6 +153,17 @@ if st.button("Download Trade Card"):
         f"Breakeven: {breakeven}"
     ]
 
+    if strategy:
+        lines.extend(textwrap.wrap(f"Strategy: {strategy}", width=40))
+    if news:
+        lines.extend(textwrap.wrap(f"News: {news}", width=40))
+    if execution:
+        lines.extend(textwrap.wrap(f"Exec Plan: {execution}", width=40))
+    if psychology:
+        lines.extend(textwrap.wrap(f"Mindset: {psychology}", width=40))
+    if tags:
+        lines.append(f"Tags: {', '.join(tags)}")
+
     for i, line in enumerate(lines):
         draw.text((20, 100 + i * 30), line, fill=(255, 255, 255), font=font)
 
@@ -144,4 +174,4 @@ if st.button("Download Trade Card"):
         data=buf.getvalue(),
         file_name=f"trade_card_{asset_symbol}_{trade_date}.png",
         mime="image/png"
-            )
+    )
