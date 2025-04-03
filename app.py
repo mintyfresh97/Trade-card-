@@ -22,7 +22,6 @@ coingecko_ids = {
     'Ondo (ONDO)': 'ondo-finance'
 }
 
-# Asset icons
 icon_map = {
     "BTC": "bitcoin-btc-logo.png", "ETH": "ethereum-eth-logo.png",
     "XRP": "xrp-xrp-logo.png", "ADA": "cardano-ada-logo.png",
@@ -45,11 +44,9 @@ def get_crypto_price_from_coingecko(name):
         st.error(f"CoinGecko API Error for {name}: {e}")
         return None
 
-# Page setup
 st.set_page_config(page_title="PnL & Risk Dashboard", layout="wide")
 st.markdown("<h1 style='color:white;'>PnL & Risk Dashboard</h1>", unsafe_allow_html=True)
 
-# Layout
 col1, col2 = st.columns([1, 2])
 
 with col1:
@@ -78,12 +75,10 @@ except:
 stop_loss = st.number_input("Stop Loss", value=round(entry * 0.99, 2), format="%.2f")
 take_profit = st.number_input("Take Profit", value=round(entry * 1.02, 2), format="%.2f")
 
-# Timeframes
 timeframes = ["1m", "5m", "15m", "1h", "4h", "Daily"]
 entry_tf = st.selectbox("Entry Timeframe", options=timeframes, index=1)
 analysis_tf = st.selectbox("Analysis Timeframe", options=timeframes, index=2)
 
-# Notes
 st.markdown("### Trade Notes")
 strategy = st.text_input("Trade Strategy", placeholder="e.g. EMA Bounce, Breakout Rejection")
 news = st.text_input("News Catalyst", placeholder="e.g. FOMC, ETF Approval, CPI Report")
@@ -91,7 +86,6 @@ execution = st.text_input("Execution Plan", placeholder="e.g. Enter on candle cl
 psychology = st.text_input("Psychology Reminder", placeholder="e.g. Stick to plan, avoid revenge trading")
 tags = st.multiselect("Tags", options=["Scalp", "Swing", "Long", "Short", "1H", "4H", "Daily", "Breakout", "Rejection"])
 
-# Calculations
 trade_date = datetime.now().strftime("%Y-%m-%d")
 total_exposure = position * leverage
 risk = abs(entry - stop_loss) * total_exposure / entry
@@ -99,7 +93,6 @@ reward = abs(take_profit - entry) * total_exposure / entry
 breakeven = round((entry + stop_loss) / 2, 2)
 rr_ratio = round(reward / risk, 2) if risk != 0 else 0
 
-# Trade Card Preview
 with col2:
     st.subheader("Trade Card")
     st.markdown(f"Asset: {asset_symbol}")
@@ -127,50 +120,69 @@ with col2:
     if tags:
         st.markdown(f"**Tags:** {', '.join(tags)}")
 
-# Image Export
 if st.button("Download Trade Card"):
-    lines = [
-        f"Asset: {asset_symbol}",
-        f"Date: {trade_date}",
-        f"Live Price: {live_price}",
-        f"Entry: {entry}",
-        f"Stop: {stop_loss}",
-        f"Target: {take_profit}",
-        f"Risk: Â£{risk:.2f}",
-        f"Reward: Â£{reward:.2f}",
-        f"RR Ratio: {rr_ratio}:1",
-        f"Breakeven: {breakeven}",
-        f"Entry TF: {entry_tf}",
-        f"Analysis TF: {analysis_tf}"
-    ]
+    lines = []
 
+    # Sections
+    lines.append("=== Trade Info ===")
+    lines.append(f"Asset: {asset_symbol}")
+    lines.append(f"Date: {trade_date}")
+    lines.append(f"Live Price: {live_price}")
+
+    lines.append("")
+    lines.append("=== Entry Setup ===")
+    lines.append(f"Entry: {entry}")
+    lines.append(f"Stop: {stop_loss}")
+    lines.append(f"Target: {take_profit}")
+    lines.append(f"Risk: Â£{risk:.2f}")
+    lines.append(f"Reward: Â£{reward:.2f}")
+    lines.append(f"RR Ratio: {rr_ratio}:1")
+    lines.append(f"Breakeven: {breakeven}")
+
+    lines.append("")
+    lines.append("=== Timeframes ===")
+    lines.append(f"Entry TF: {entry_tf}")
+    lines.append(f"Analysis TF: {analysis_tf}")
+
+    lines.append("")
+    lines.append("=== Notes ===")
     if strategy:
-        lines.extend(textwrap.wrap(f"Strategy: {strategy}", width=40))
+        lines.extend(textwrap.wrap(f"Strategy: {strategy}", width=50))
     if news:
-        lines.extend(textwrap.wrap(f"News: {news}", width=40))
+        lines.extend(textwrap.wrap(f"News: {news}", width=50))
     if execution:
-        lines.extend(textwrap.wrap(f"Exec Plan: {execution}", width=40))
+        lines.extend(textwrap.wrap(f"Execution Plan: {execution}", width=50))
     if psychology:
-        lines.extend(textwrap.wrap(f"Mindset: {psychology}", width=40))
+        lines.extend(textwrap.wrap(f"Mindset: {psychology}", width=50))
     if tags:
-        lines.extend(textwrap.wrap(f"Tags: {', '.join(tags)}", width=40))
+        lines.extend(textwrap.wrap(f"Tags: {', '.join(tags)}", width=50))
 
-    line_height = 30
-    image_height = 120 + line_height * len(lines)
-    img = Image.new("RGB", (600, image_height), color=(25, 25, 25))
+    line_height = 34
+    image_height = 140 + line_height * len(lines)
+    img = Image.new("RGB", (700, image_height), color=(20, 20, 20))
     draw = ImageDraw.Draw(img)
-    font = ImageFont.load_default()
+
+    try:
+        heading_font = ImageFont.truetype("DejaVuSans-Bold.ttf", 20)
+        body_font = ImageFont.truetype("DejaVuSans.ttf", 18)
+    except:
+        heading_font = body_font = ImageFont.load_default()
 
     logo_path = f"assets/{icon_map.get(asset_symbol, '')}"
     if os.path.exists(logo_path):
         try:
             logo = Image.open(logo_path).convert("RGBA").resize((64, 64))
-            img.paste(logo, (520, 20), logo)
+            img.paste(logo, (620, 20), logo)
         except Exception as e:
             st.warning(f"Could not load logo: {e}")
 
-    for i, line in enumerate(lines):
-        draw.text((20, 100 + i * line_height), line, fill=(255, 255, 255), font=font)
+    y = 100
+    for line in lines:
+        font = heading_font if line.startswith("===") else body_font
+        color = (255, 165, 0) if line.startswith("===") else (255, 255, 255)
+        text = line.replace("===", "").strip() if line.startswith("===") else line
+        draw.text((30, y), text, fill=color, font=font)
+        y += line_height
 
     buf = io.BytesIO()
     img.save(buf, format="PNG")
