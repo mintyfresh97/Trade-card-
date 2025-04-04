@@ -58,6 +58,34 @@ with col1:
     else:
         st.warning("Icon not found")
 
+
+# --- Live price fetch ---
+def get_crypto_price_from_coingecko(name):
+    try:
+        coin_id = coingecko_ids.get(name)
+        if not coin_id:
+            raise ValueError("Unknown CoinGecko ID")
+        url = f"https://api.coingecko.com/api/v3/simple/price?ids={coin_id}&vs_currencies=usd"
+        response = requests.get(url, timeout=5)
+        data = response.json()
+        return round(data[coin_id]['usd'], 2)
+    except Exception as e:
+        st.error(f"CoinGecko API Error for {name}: {e}")
+        return None
+
+# --- Entry Price from Live API ---
+try:
+    live_price = get_crypto_price_from_coingecko(asset_display)
+    if live_price:
+        entry = st.number_input("Entry Price", value=live_price, format="%.2f")
+    else:
+        entry = st.number_input("Entry Price", value=82000.0, format="%.2f")
+except Exception as e:
+    st.warning(f"Price fetch error: {e}")
+    entry = st.number_input("Entry Price", value=82000.0, format="%.2f")
+    live_price = "Not available"
+
+
 position = st.number_input("Position Size (Â£)", value=500.0)
 leverage = st.number_input("Leverage", value=20)
 
