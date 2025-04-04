@@ -54,9 +54,7 @@ with col1:
     asset_symbol = asset_display.split("(")[-1].replace(")", "").strip()
     icon_path = f"assets/{icon_map.get(asset_symbol, '')}"
     if os.path.exists(icon_path):
-        st.image(icon_path, width=32)
     else:
-        st.warning("Icon not found")
 
 position = st.number_input("Position Size (Â£)", value=500.0)
 leverage = st.number_input("Leverage", value=20)
@@ -182,7 +180,6 @@ with st.expander("Export Trade Card", expanded=False):
                     logo = Image.open(logo_path).convert("RGBA").resize((64, 64))
                     img.paste(logo, (620, 20), logo)
                 except Exception as e:
-                    st.warning(f"Could not load logo: {e}")
         
             y = 100
             for line in lines:
