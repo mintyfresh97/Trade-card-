@@ -7,7 +7,6 @@ from PIL import Image, ImageDraw, ImageFont
 import io
 import textwrap
 
-# CoinGecko ID mapping
 coingecko_ids = {
     'Bitcoin (BTC)': 'bitcoin',
     'Ethereum (ETH)': 'ethereum',
@@ -122,8 +121,6 @@ with col2:
 
 if st.button("Download Trade Card"):
     lines = []
-
-    # Sections
     lines.append("=== Trade Info ===")
     lines.append(f"Asset: {asset_symbol}")
     lines.append(f"Date: {trade_date}")
@@ -168,6 +165,13 @@ if st.button("Download Trade Card"):
     except:
         heading_font = body_font = ImageFont.load_default()
 
+    # Centered heading
+    asset_name = asset_display.split("(")[0].strip()
+    title = f"{asset_name} Risk Setup"
+    title_w, title_h = draw.textsize(title, font=heading_font)
+    draw.text(((700 - title_w) // 2, 30), title, font=heading_font, fill=(255, 255, 255))
+
+    # Logo
     logo_path = f"assets/{icon_map.get(asset_symbol, '')}"
     if os.path.exists(logo_path):
         try:
