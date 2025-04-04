@@ -74,10 +74,15 @@ def get_crypto_price_from_coingecko(name):
         return None
 
 # --- Entry Price from Live API ---
+# --- Entry Price unified input with safe fallback ---
 try:
     live_price = get_crypto_price_from_coingecko(asset_display)
-    if live_price:
-        entry = st.number_input("Entry Price", value=float(live_price), format="%.2f")
+except Exception as e:
+    st.warning(f"Price fetch error: {e}")
+    live_price = None
+
+entry_price_default = float(live_price) if live_price else 82000.0
+entry = st.number_input("Entry Price", value=entry_price_default, format="%.2f")
     else:
         entry = st.number_input("Entry Price", value=82000.0, format="%.2f")
 except Exception as e:
@@ -89,10 +94,15 @@ except Exception as e:
 position = st.number_input("Position Size (Â£)", value=500.0)
 leverage = st.number_input("Leverage", value=20)
 
+# --- Entry Price unified input with safe fallback ---
 try:
     live_price = get_crypto_price_from_coingecko(asset_display)
-    if live_price:
-        entry = st.number_input("Entry Price", value=float(live_price), format="%.2f")
+except Exception as e:
+    st.warning(f"Price fetch error: {e}")
+    live_price = None
+
+entry_price_default = float(live_price) if live_price else 82000.0
+entry = st.number_input("Entry Price", value=entry_price_default, format="%.2f")
     else:
         entry = st.number_input("Entry Price", value=82000.0, format="%.2f")
 except:
