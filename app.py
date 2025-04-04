@@ -285,9 +285,7 @@ if os.path.exists("trade_log.csv"):
 
 
 
-import matplotlib.pyplot as plt
-
-# --- Charts and CSV Export ---
+# --- Streamlit Charts and Export ---
 if os.path.exists("trade_log.csv"):
     st.markdown("### Trade Analytics")
 
@@ -295,23 +293,17 @@ if os.path.exists("trade_log.csv"):
     df_hist['Date'] = pd.to_datetime(df_hist['Date'], errors='coerce')
 
     # Outcome bar chart
+    st.subheader("Trade Outcomes")
     outcome_counts = df_hist['Outcome'].value_counts()
-    fig1, ax1 = plt.subplots()
-    outcome_counts.plot(kind='bar', color='orange', ax=ax1)
-    ax1.set_title("Trade Outcomes")
-    ax1.set_ylabel("Count")
-    st.pyplot(fig1)
+    st.bar_chart(outcome_counts)
 
     # RR ratio line chart
     try:
-        df_hist['RR Numeric'] = df_hist['RR Ratio'].str.extract(r'([\d\.]+)').astype(float)
+        df_hist['RR Numeric'] = df_hist['RR Ratio'].str.extract('([0-9\.]+)').astype(float)
         df_hist_sorted = df_hist.sort_values("Date")
-        fig2, ax2 = plt.subplots()
-        ax2.plot(df_hist_sorted['Date'], df_hist_sorted['RR Numeric'], marker='o')
-        ax2.set_title("RR Ratio Over Time")
-        ax2.set_ylabel("RR Ratio")
-        ax2.set_xlabel("Date")
-        st.pyplot(fig2)
+        rr_data = df_hist_sorted.set_index("Date")[["RR Numeric"]]
+        st.subheader("RR Ratio Over Time")
+        st.line_chart(rr_data)
     except Exception as e:
         st.warning(f"Could not plot RR Ratio chart: {e}")
 
