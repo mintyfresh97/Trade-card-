@@ -65,7 +65,8 @@ try:
         entry = st.number_input("Entry Price", value=live_price, format="%.2f")
     else:
         entry = st.number_input("Entry Price", value=82000.0, format="%.2f")
-except:
+except Exception as e:
+    st.warning(f"Price fetch error: {e}")
     entry = st.number_input("Entry Price", value=82000.0, format="%.2f")
     live_price = "Not available"
 
