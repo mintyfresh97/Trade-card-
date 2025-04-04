@@ -77,7 +77,7 @@ def get_crypto_price_from_coingecko(name):
 try:
     live_price = get_crypto_price_from_coingecko(asset_display)
     if live_price:
-        entry = st.number_input("Entry Price", value=live_price, format="%.2f")
+        entry = st.number_input("Entry Price", value=float(live_price), format="%.2f")
     else:
         entry = st.number_input("Entry Price", value=82000.0, format="%.2f")
 except Exception as e:
@@ -92,7 +92,7 @@ leverage = st.number_input("Leverage", value=20)
 try:
     live_price = get_crypto_price_from_coingecko(asset_display)
     if live_price:
-        entry = st.number_input("Entry Price", value=live_price, format="%.2f")
+        entry = st.number_input("Entry Price", value=float(live_price), format="%.2f")
     else:
         entry = st.number_input("Entry Price", value=82000.0, format="%.2f")
 except:
