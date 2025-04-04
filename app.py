@@ -199,3 +199,58 @@ if st.button("Download Trade Card"):
         file_name=f"trade_card_{asset_symbol}_{trade_date}.png",
         mime="image/png"
     )
+
+
+
+import pandas as pd
+import os
+
+st.markdown("---")
+st.header("Strategy Tracker")
+
+# Strategy logging inputs
+track_col1, track_col2 = st.columns(2)
+with track_col1:
+    strategy_used = st.text_input("Strategy Name", placeholder="e.g. EMA Bounce")
+    trade_result = st.selectbox("Trade Outcome", ["Win", "Loss", "Break-even"])
+with track_col2:
+    rr_logged = st.text_input("RR Ratio", value=f"{rr_ratio}:1")
+    notes = st.text_area("Additional Notes")
+
+# Save trade log
+if st.button("Save Trade to Log"):
+    trade_data = {
+        "Date": [trade_date],
+        "Asset": [asset_symbol],
+        "Strategy": [strategy_used],
+        "RR Ratio": [rr_logged],
+        "Outcome": [trade_result],
+        "Notes": [notes],
+    }
+
+    df_new = pd.DataFrame(trade_data)
+    log_path = "trade_log.csv"
+    if os.path.exists(log_path):
+        df_existing = pd.read_csv(log_path)
+        df_all = pd.concat([df_existing, df_new], ignore_index=True)
+    else:
+        df_all = df_new
+
+    df_all.to_csv(log_path, index=False)
+    st.success("Trade saved to log!")
+
+# Show history
+if os.path.exists("trade_log.csv"):
+    st.markdown("### Trade History")
+    df_hist = pd.read_csv("trade_log.csv")
+    st.dataframe(df_hist)
+
+    # Stats
+    st.markdown("### Performance Summary")
+    total = len(df_hist)
+    wins = len(df_hist[df_hist["Outcome"] == "Win"])
+    losses = len(df_hist[df_hist["Outcome"] == "Loss"])
+    win_rate = round((wins / total) * 100, 1) if total > 0 else 0
+    st.write(f"Total Trades: {total}")
+    st.write(f"Win Rate: {win_rate}%")
+    st.write(f"Most Used Strategy: {df_hist['Strategy'].mode()[0] if total > 0 else '-'}")
