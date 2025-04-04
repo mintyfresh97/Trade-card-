@@ -68,6 +68,11 @@ try:
 except:
     entry = st.number_input("Entry Price", value=82000.0, format="%.2f")
     live_price = "Not available"
+    else:
+        entry = st.number_input("Entry Price", value=82000.0, format="%.2f")
+except:
+    entry = st.number_input("Entry Price", value=82000.0, format="%.2f")
+    live_price = "Not available"
 
 stop_loss = st.number_input("Stop Loss", value=round(entry * 0.99, 2), format="%.2f")
 take_profit = st.number_input("Take Profit", value=round(entry * 1.02, 2), format="%.2f")
