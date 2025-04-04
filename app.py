@@ -166,9 +166,12 @@ if st.button("Download Trade Card"):
         heading_font = body_font = ImageFont.load_default()
 
     # Centered heading
+    # Centered heading
     asset_name = asset_display.split("(")[0].strip()
     title = f"{asset_name} Risk Setup"
-    title_w, title_h = draw.textsize(title, font=heading_font)
+    bbox = heading_font.getbbox(title)
+    title_w = bbox[2] - bbox[0]
+    title_h = bbox[3] - bbox[1]
     draw.text(((700 - title_w) // 2, 30), title, font=heading_font, fill=(255, 255, 255))
 
     # Logo
