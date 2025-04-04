@@ -282,3 +282,43 @@ if os.path.exists("trade_log.csv"):
     st.write(f"Total Trades: {total}")
     st.write(f"Win Rate: {win_rate}%")
     st.write(f"Most Used Strategy: {df_hist['Strategy'].mode()[0] if total > 0 else '-'}")
+
+
+
+import matplotlib.pyplot as plt
+
+# --- Charts and CSV Export ---
+if os.path.exists("trade_log.csv"):
+    st.markdown("### Trade Analytics")
+
+    df_hist = pd.read_csv("trade_log.csv")
+    df_hist['Date'] = pd.to_datetime(df_hist['Date'], errors='coerce')
+
+    # Outcome bar chart
+    outcome_counts = df_hist['Outcome'].value_counts()
+    fig1, ax1 = plt.subplots()
+    outcome_counts.plot(kind='bar', color='orange', ax=ax1)
+    ax1.set_title("Trade Outcomes")
+    ax1.set_ylabel("Count")
+    st.pyplot(fig1)
+
+    # RR ratio line chart
+    try:
+        df_hist['RR Numeric'] = df_hist['RR Ratio'].str.extract(r'([\d\.]+)').astype(float)
+        df_hist_sorted = df_hist.sort_values("Date")
+        fig2, ax2 = plt.subplots()
+        ax2.plot(df_hist_sorted['Date'], df_hist_sorted['RR Numeric'], marker='o')
+        ax2.set_title("RR Ratio Over Time")
+        ax2.set_ylabel("RR Ratio")
+        ax2.set_xlabel("Date")
+        st.pyplot(fig2)
+    except Exception as e:
+        st.warning(f"Could not plot RR Ratio chart: {e}")
+
+    # CSV export
+    st.download_button(
+        label="Download Trade History CSV",
+        data=df_hist.to_csv(index=False),
+        file_name="trade_log.csv",
+        mime="text/csv"
+    )
