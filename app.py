@@ -72,7 +72,7 @@ def get_coin_data_from_paprika(name, vs_currency="USD"):
 def get_social_sentiment(coin):
     """
     Dummy function to simulate social sentiment analysis.
-    In production, integrate with a real service (e.g., LunarCrush, Santiment).
+    In production, integrate with a real service.
     """
     sentiment_score = random.randint(-100, 100)
     if sentiment_score > 20:
@@ -86,14 +86,10 @@ def get_social_sentiment(coin):
 # ---------------------------
 # Key Levels & Volume Strength Functions
 # ---------------------------
-# Initialize session state for storing key levels if not present.
 if "levels_data" not in st.session_state:
     st.session_state["levels_data"] = {}
 
 def get_levels_for_asset(asset_name):
-    """
-    Retrieve or create the levels dictionary for a given asset.
-    """
     if asset_name not in st.session_state["levels_data"]:
         st.session_state["levels_data"][asset_name] = {
             "support": "",
@@ -105,15 +101,12 @@ def get_levels_for_asset(asset_name):
     return st.session_state["levels_data"][asset_name]
 
 def save_levels_for_asset(asset_name, levels):
-    """
-    Save the updated levels for the asset in session state.
-    """
     st.session_state["levels_data"][asset_name] = levels
 
 def calculate_volume_strength(vol_df, ma_period=14):
     """
-    Calculate a volume strength score by comparing the latest volume to a 14-period moving average.
-    The score is scaled from 0 to 10.
+    Calculate a volume strength score by comparing the latest volume to a 14-period MA.
+    Returns a score scaled from 0 to 10.
     """
     vol_df = vol_df.copy()
     vol_df["VolumeMA"] = vol_df["Volume"].rolling(window=ma_period).mean()
@@ -125,12 +118,11 @@ def calculate_volume_strength(vol_df, ma_period=14):
         return 0.0
     ratio = last_vol / last_ma
     if ratio < 0.5:
-        vol_score = 0.0
+        return 0.0
     elif ratio > 2.0:
-        vol_score = 10.0
+        return 10.0
     else:
-        vol_score = (ratio - 0.5) / (2.0 - 0.5) * 10.0
-    return vol_score
+        return (ratio - 0.5) / (2.0 - 0.5) * 10.0
 
 # ---------------------------
 # Layout and Main App
@@ -138,13 +130,12 @@ def calculate_volume_strength(vol_df, ma_period=14):
 st.markdown("<h1 style='color:white;'>PnL & Risk Dashboard</h1>", unsafe_allow_html=True)
 
 # Create two columns:
-# LEFT COLUMN for asset selection, market data, and display of key levels & volume strength (the "orange box" area).
-# RIGHT COLUMN for editing key levels, styled Plotly chart, and trade card preview.
+# LEFT COLUMN ("Orange Box"): Asset selection, market data, key levels & volume strength display.
+# RIGHT COLUMN: Edit key levels, styled Plotly chart, and trade card preview.
 col1, col2 = st.columns([1, 2])
 
 # LEFT COLUMN:
 with col1:
-    # Asset selection
     display_names = list(coinpaprika_ids.keys())
     asset_display = st.selectbox("Select Asset", display_names)
     asset_symbol = asset_display.split("(")[-1].replace(")", "").strip()
@@ -154,7 +145,6 @@ with col1:
     else:
         st.warning("Icon not found")
     
-    # Market data & sentiment
     price, daily_change, weekly_change, monthly_change = get_coin_data_from_paprika(asset_display)
     if price is not None:
         st.markdown(f"**Live Price:** ${price}")
@@ -169,7 +159,6 @@ with col1:
     sentiment, sentiment_score = get_social_sentiment(asset_display)
     st.markdown(f"**Social Sentiment:** {sentiment} (Score: {sentiment_score})")
     
-    # Display Key Levels & Volume Strength in a "white box" (the orange box area per your annotation)
     st.markdown("### Key Levels & Volume Strength")
     levels = get_levels_for_asset(asset_display)
     st.markdown(f"**Support:** {levels['support'] or 'N/A'}")
@@ -178,7 +167,7 @@ with col1:
     st.markdown(f"**Supply:** {levels['supply'] or 'N/A'}")
     st.markdown(f"**CHoCH:** {levels['choch'] or 'N/A'}")
     
-    # Dummy volume DataFrame (replace with actual volume data if available)
+    # Dummy volume data (replace with your own if available)
     vol_df = pd.DataFrame({
         "Date": pd.date_range("2023-01-01", periods=30, freq="D"),
         "Volume": np.random.randint(1000, 5000, 30)
@@ -186,10 +175,39 @@ with col1:
     vol_df.sort_values("Date", inplace=True)
     vol_score = calculate_volume_strength(vol_df)
     st.markdown(f"**Volume Strength Score:** {vol_score:.1f} / 10")
+    
+    # New: Show a 3-Day % Change (instead of 24h) in a neutral color scheme.
+    st.markdown("### 3-Day % Change")
+    # Dummy data for 3-day changes.
+    df_3d = pd.DataFrame({
+        "Symbol": ["BTC", "ETH", "ADA", "FARTCOIN", "SUI", "LINK", "ONDO", "CRV"],
+        "Change (%)": [1.2, -0.8, 2.5, 4.2, 3.3, -1.0, -0.6, 0.9]
+    })
+    fig = px.bar(
+        df_3d,
+        x="Symbol",
+        y="Change (%)",
+        color="Change (%)",
+        color_continuous_scale=[(0, "red"), (0.5, "gray"), (1, "green")],
+        range_color=(-5, 5),
+        title="3-Day % Change Heatmap"
+    )
+    fig.update_layout(
+        template="plotly_white",
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
+        font_color="black",
+        xaxis=dict(showgrid=False),
+        yaxis=dict(showgrid=False),
+        title_x=0.5
+    )
+    # Optionally show the color scale legend if desired:
+    fig.update_coloraxes(showscale=False)
+    st.plotly_chart(fig, use_container_width=True)
 
 # RIGHT COLUMN:
 with col2:
-    # Edit Key Levels Section
+    # Edit Key Levels Section remains here.
     st.subheader("Edit Key Levels")
     with st.expander("Modify Levels", expanded=False):
         new_support = st.text_input("Support", value=levels["support"])
@@ -208,35 +226,10 @@ with col2:
             save_levels_for_asset(asset_display, updated_levels)
             st.success("Levels updated!")
     
-    # Styled Plotly Chart: 24h % Change Heatmap
-    df_chart = pd.DataFrame({
-        "Symbol": ["BTC", "ETH", "ADA", "FARTCOIN", "SUI", "LINK", "ONDO", "CRV"],
-        "Change (%)": [2.4, -1.3, 3.1, 11.7, 6.3, 5.6, -4.2, -2.8]
-    })
-    fig = px.bar(
-        df_chart,
-        x="Symbol",
-        y="Change (%)",
-        color="Change (%)",
-        # Custom color scale: red (low), yellow (mid), green (high)
-        color_continuous_scale=[(0, "red"), (0.5, "yellow"), (1, "green")],
-        range_color=(-5, 12),
-        title="24h % Change Heatmap"
-    )
-    # Update layout for dark styling
-    fig.update_layout(
-        template="plotly_dark",
-        plot_bgcolor="rgba(0,0,0,0)",
-        paper_bgcolor="rgba(0,0,0,0)",
-        font_color="white",
-        xaxis=dict(showgrid=False),
-        yaxis=dict(showgrid=False),
-        title_x=0.5
-    )
-    fig.update_coloraxes(showscale=False)
-    st.plotly_chart(fig, use_container_width=True)
+    # Styled Plotly Chart: 3-Day % Change Heatmap already shown on left column.
+    # (We can add additional charts or analysis here if desired.)
     
-    # Collapsible Trade Card Preview
+    # Collapsible Trade Card Preview remains.
     with st.expander("Show Trade Card Preview", expanded=False):
         st.subheader("Trade Card")
         st.markdown(f"Asset: {asset_symbol}")
@@ -246,7 +239,6 @@ with col2:
         else:
             st.markdown("Live Price: N/A")
         
-        # Trade inputs & details.
         entry_price_default = price if price is not None else 82000.0
         entry = st.number_input("Entry Price", value=entry_price_default, format="%.2f")
         position = st.number_input("Position Size (£)", value=500.0)
