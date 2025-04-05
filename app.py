@@ -137,11 +137,15 @@ def calculate_volume_strength(vol_df, ma_period=14):
 # ---------------------------
 st.markdown("<h1 style='color:white;'>PnL & Risk Dashboard</h1>", unsafe_allow_html=True)
 
-# Create two columns: left for asset selection and market data; right for charts, key levels, and trade card preview.
+# Create two columns: left for asset selection and display data; right for editing key levels, chart, trade card, etc.
 col1, col2 = st.columns([1, 2])
 
-# LEFT COLUMN: Asset selection, market data, and sentiment.
+# LEFT COLUMN: 
+# 1) Asset selection
+# 2) Market data & sentiment
+# 3) Display key levels & volume strength (the "white box" data)
 with col1:
+    # 1) Asset selection
     display_names = list(coinpaprika_ids.keys())
     asset_display = st.selectbox("Select Asset", display_names)
     asset_symbol = asset_display.split("(")[-1].replace(")", "").strip()
@@ -151,6 +155,7 @@ with col1:
     else:
         st.warning("Icon not found")
     
+    # 2) Market data & sentiment
     price, daily_change, weekly_change, monthly_change = get_coin_data_from_paprika(asset_display)
     if price is not None:
         st.markdown(f"**Live Price:** ${price}")
@@ -164,20 +169,39 @@ with col1:
     
     sentiment, sentiment_score = get_social_sentiment(asset_display)
     st.markdown(f"**Social Sentiment:** {sentiment} (Score: {sentiment_score})")
-
-# RIGHT COLUMN: Key Levels, Volume Strength, Plotly chart, and collapsible Trade Card preview.
-with col2:
-    # --- Key Levels & Volume Strength Section ---
-    st.subheader("Key Levels & Volume Strength")
-    # Retrieve key levels for the selected asset.
+    
+    # 3) Display key levels & volume strength (white box data)
+    st.markdown("### Key Levels & Volume Strength")
     levels = get_levels_for_asset(asset_display)
-    with st.expander("Edit Key Levels", expanded=False):
+    st.markdown(f"**Support:** {levels['support'] or 'N/A'}")
+    st.markdown(f"**Demand:** {levels['demand'] or 'N/A'}")
+    st.markdown(f"**Resistance:** {levels['resistance'] or 'N/A'}")
+    st.markdown(f"**Supply:** {levels['supply'] or 'N/A'}")
+    st.markdown(f"**CHoCH:** {levels['choch'] or 'N/A'}")
+    
+    # Create a dummy volume DataFrame for the selected asset & compute volume strength
+    vol_df = pd.DataFrame({
+        "Date": pd.date_range("2023-01-01", periods=30, freq="D"),
+        "Volume": np.random.randint(1000, 5000, 30)
+    })
+    vol_df.sort_values("Date", inplace=True)
+    vol_score = calculate_volume_strength(vol_df)
+    st.markdown(f"**Volume Strength Score:** {vol_score:.1f} / 10")
+
+# RIGHT COLUMN:
+# 1) Key levels editing
+# 2) Plotly chart
+# 3) Collapsible trade card
+with col2:
+    # 1) Key Levels Editing
+    st.subheader("Edit Key Levels")
+    with st.expander("Modify Levels", expanded=False):
         new_support = st.text_input("Support", value=levels["support"])
         new_demand = st.text_input("Demand", value=levels["demand"])
         new_resistance = st.text_input("Resistance", value=levels["resistance"])
         new_supply = st.text_input("Supply", value=levels["supply"])
         new_choch = st.text_input("CHoCH", value=levels["choch"])
-        if st.button("Save Levels", key="save_levels"):
+        if st.button("Save Levels"):
             updated_levels = {
                 "support": new_support,
                 "demand": new_demand,
@@ -187,22 +211,8 @@ with col2:
             }
             save_levels_for_asset(asset_display, updated_levels)
             st.success("Levels updated!")
-    st.markdown(f"**Support:** {levels['support'] or 'N/A'}")
-    st.markdown(f"**Demand:** {levels['demand'] or 'N/A'}")
-    st.markdown(f"**Resistance:** {levels['resistance'] or 'N/A'}")
-    st.markdown(f"**Supply:** {levels['supply'] or 'N/A'}")
-    st.markdown(f"**CHoCH:** {levels['choch'] or 'N/A'}")
     
-    # Create a dummy volume DataFrame for the selected asset.
-    vol_df = pd.DataFrame({
-        "Date": pd.date_range("2023-01-01", periods=30, freq="D"),
-        "Volume": np.random.randint(1000, 5000, 30)
-    })
-    vol_df.sort_values("Date", inplace=True)
-    vol_score = calculate_volume_strength(vol_df)
-    st.markdown(f"**Volume Strength Score:** {vol_score:.1f} / 10")
-    
-    # --- Plotly Chart: 24h % Change Heatmap ---
+    # 2) Plotly Chart: 24h % Change Heatmap
     df_chart = pd.DataFrame({
         "Symbol": ["BTC", "ETH", "ADA", "FARTCOIN", "SUI", "LINK", "ONDO", "CRV"],
         "Change (%)": [2.4, -1.3, 3.1, 11.7, 6.3, 5.6, -4.2, -2.8]
@@ -217,17 +227,15 @@ with col2:
     )
     st.plotly_chart(fig, use_container_width=True)
     
-    # --- Collapsible Trade Card Preview ---
+    # 3) Collapsible Trade Card Preview
     with st.expander("Show Trade Card Preview", expanded=False):
         st.subheader("Trade Card")
-        st.markdown(f"Asset: {asset_symbol}")
         if price is not None:
             st.markdown(f"Live Price: ${price}")
             st.markdown(f"24h Change: {daily_change}%")
         else:
             st.markdown("Live Price: N/A")
         
-        # Trade inputs & details.
         entry_price_default = price if price is not None else 82000.0
         entry = st.number_input("Entry Price", value=entry_price_default, format="%.2f")
         position = st.number_input("Position Size (£)", value=500.0)
@@ -237,6 +245,7 @@ with col2:
         timeframes = ["1m", "5m", "15m", "1h", "4h", "Daily"]
         entry_tf = st.selectbox("Entry Timeframe", options=timeframes, index=1)
         analysis_tf = st.selectbox("Analysis Timeframe", options=timeframes, index=2)
+        
         st.markdown("### Trade Notes")
         strategy = st.text_input("Trade Strategy", placeholder="e.g. EMA Bounce, Breakout Rejection")
         news = st.text_input("News Catalyst", placeholder="e.g. FOMC, ETF Approval, CPI Report")
@@ -353,12 +362,13 @@ with track_col1:
     strategy_used = st.text_input("Strategy Name", placeholder="e.g. EMA Bounce")
     trade_result = st.selectbox("Trade Outcome", ["Win", "Loss", "Break-even"])
 with track_col2:
-    rr_logged = st.text_input("RR Ratio", value=f"{rr_ratio}:1")
+    # We assume rr_ratio, trade_date, etc. are already defined above, so we won't redefine them here.
+    rr_logged = st.text_input("RR Ratio", value="1:1")
     notes = st.text_area("Additional Notes")
 
 if st.button("Save Trade to Log"):
     trade_data = {
-        "Date": [trade_date],
+        "Date": [datetime.now().strftime("%Y-%m-%d")],
         "Asset": [asset_symbol],
         "Strategy": [strategy_used],
         "RR Ratio": [rr_logged],
@@ -394,7 +404,10 @@ if os.path.exists("trade_log.csv"):
     win_rate = round((wins / total) * 100, 1) if total > 0 else 0
     st.write(f"Total Trades: {total}")
     st.write(f"Win Rate: {win_rate}%")
-    st.write(f"Most Used Strategy: {df_hist['Strategy'].mode()[0] if total > 0 else '-'}")
+    if total > 0:
+        st.write(f"Most Used Strategy: {df_hist['Strategy'].mode()[0]}")
+    else:
+        st.write("No trades logged yet.")
 
 if os.path.exists("trade_log.csv"):
     st.markdown("### Trade Analytics")
