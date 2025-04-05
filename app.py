@@ -14,40 +14,13 @@ from streamlit_autorefresh import st_autorefresh
 st.set_page_config(page_title="PnL & Risk Dashboard", layout="wide")
 
 # ---------------------------
-# 1. User Authentication (Multiple Users Supported)
-# ---------------------------
-if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
-
-# Define a dictionary with valid usernames and passwords.
-valid_users = {
-    "admin": "password",
-    "user1": "password1",
-    "user2": "password2"
-}
-
-if not st.session_state.logged_in:
-    st.sidebar.header("Login")
-    username = st.sidebar.text_input("Username")
-    password = st.sidebar.text_input("Password", type="password")
-    if st.sidebar.button("Login"):
-        if username in valid_users and password == valid_users[username]:
-            st.session_state.logged_in = True
-            st.session_state.username = username  # Save username for later use if needed.
-            st.success("Logged in successfully!")
-            st.experimental_rerun()  # Force a rerun to show the main dashboard.
-        else:
-            st.error("Invalid credentials")
-    st.stop()
-
-# ---------------------------
-# 2. Real-Time Data Updates (Auto Refresh)
+# Real-Time Data Updates (Auto Refresh)
 # ---------------------------
 # Auto-refresh every 30 seconds (30,000 ms); up to 100 refreshes.
 st_autorefresh(interval=30000, limit=100, key="autorefresh")
 
 # ---------------------------
-# 3. Data & API Functions
+# Data & API Functions
 # ---------------------------
 # CoinPaprika IDs for various coins.
 coinpaprika_ids = {
@@ -110,7 +83,7 @@ def get_social_sentiment(coin):
     return sentiment, sentiment_score
 
 # ---------------------------
-# 4. Layout and Main App
+# Layout and Main App
 # ---------------------------
 st.markdown("<h1 style='color:white;'>PnL & Risk Dashboard</h1>", unsafe_allow_html=True)
 
@@ -287,7 +260,7 @@ with col2:
             )
 
 # ---------------------------
-# 5. Trade Log & Advanced Analytics
+# Trade Log & Advanced Analytics
 # ---------------------------
 st.markdown("---")
 st.header("Strategy Tracker")
