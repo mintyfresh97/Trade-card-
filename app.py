@@ -10,13 +10,16 @@ import random
 import plotly.express as px
 from streamlit_autorefresh import st_autorefresh
 
+# Set page configuration as the very first Streamlit command.
+st.set_page_config(page_title="PnL & Risk Dashboard", layout="wide")
+
 # ---------------------------
 # 1. User Authentication (Multiple Users Supported)
 # ---------------------------
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 
-# Define a dictionary of valid users and their passwords
+# Define a dictionary with valid usernames and passwords.
 valid_users = {
     "admin": "password",
     "user1": "password1",
@@ -30,23 +33,23 @@ if not st.session_state.logged_in:
     if st.sidebar.button("Login"):
         if username in valid_users and password == valid_users[username]:
             st.session_state.logged_in = True
-            st.session_state.username = username  # Save username in session
+            st.session_state.username = username  # Save username for later use if needed.
             st.success("Logged in successfully!")
-            st.experimental_rerun()  # Rerun to show main app
+            st.experimental_rerun()  # Force a rerun to show the main dashboard.
         else:
             st.error("Invalid credentials")
-    st.stop()  # Stop the script here if not logged in
+    st.stop()
 
 # ---------------------------
 # 2. Real-Time Data Updates (Auto Refresh)
 # ---------------------------
-# Refresh the app every 30 seconds (30,000 ms)
+# Auto-refresh every 30 seconds (30,000 ms); up to 100 refreshes.
 st_autorefresh(interval=30000, limit=100, key="autorefresh")
 
 # ---------------------------
 # 3. Data & API Functions
 # ---------------------------
-# Updated CoinPaprika IDs and icon filenames
+# CoinPaprika IDs for various coins.
 coinpaprika_ids = {
     'Bitcoin (BTC)': 'btc-bitcoin',
     'Ethereum (ETH)': 'eth-ethereum',
@@ -61,6 +64,7 @@ coinpaprika_ids = {
     'Based Fartcoin (FARTCOIN)': 'fartcoin-based-fartcoin'
 }
 
+# Mapping for coin icons.
 icon_map = {
     "BTC": "bitcoin-btc-logo.png", "ETH": "ethereum-eth-logo.png",
     "XRP": "xrp-xrp-logo.png", "ADA": "cardano-ada-logo.png",
@@ -72,7 +76,7 @@ icon_map = {
 
 def get_coin_data_from_paprika(name, vs_currency="USD"):
     """
-    Fetches live price and percentage changes (24h, 7d, 30d) for a given coin.
+    Fetches live price and percentage changes (24h, 7d, 30d) for the given coin.
     """
     try:
         coin_id = coinpaprika_ids.get(name)
@@ -108,13 +112,12 @@ def get_social_sentiment(coin):
 # ---------------------------
 # 4. Layout and Main App
 # ---------------------------
-st.set_page_config(page_title="PnL & Risk Dashboard", layout="wide")
 st.markdown("<h1 style='color:white;'>PnL & Risk Dashboard</h1>", unsafe_allow_html=True)
 
-# Create two columns: left for selection/market data, right for charts & preview
+# Create two columns: left for asset selection and market data; right for charts and trade card preview.
 col1, col2 = st.columns([1, 2])
 
-# LEFT COLUMN
+# LEFT COLUMN: Asset selection, market data, and sentiment.
 with col1:
     display_names = list(coinpaprika_ids.keys())
     asset_display = st.selectbox("Select Asset", display_names)
@@ -125,7 +128,6 @@ with col1:
     else:
         st.warning("Icon not found")
     
-    # Fetch market data from CoinPaprika
     price, daily_change, weekly_change, monthly_change = get_coin_data_from_paprika(asset_display)
     if price is not None:
         st.markdown(f"**Live Price:** ${price}")
@@ -137,14 +139,13 @@ with col1:
     else:
         st.markdown("No market data available.")
     
-    # Display Social Sentiment
     sentiment, sentiment_score = get_social_sentiment(asset_display)
     st.markdown(f"**Social Sentiment:** {sentiment} (Score: {sentiment_score})")
 
-# RIGHT COLUMN
+# RIGHT COLUMN: Plotly chart and collapsible Trade Card preview.
 with col2:
-    # Plotly Chart: 24h % Change Heatmap
-    # Prepare a dummy DataFrame for the snapshot chart (replace with live multi‑coin data as needed)
+    # Plotly Chart: 24h % Change Heatmap.
+    # (This example uses a dummy DataFrame; replace with live multi-coin data as needed.)
     df = pd.DataFrame({
         "Symbol": ["BTC", "ETH", "ADA", "FARTCOIN", "SUI", "LINK", "ONDO", "CRV"],
         "Change (%)": [2.4, -1.3, 3.1, 11.7, 6.3, 5.6, -4.2, -2.8]
@@ -159,7 +160,7 @@ with col2:
     )
     st.plotly_chart(fig, use_container_width=True)
     
-    # Collapsible Trade Card Preview
+    # Collapsible Trade Card Preview.
     with st.expander("Show Trade Card Preview", expanded=False):
         st.subheader("Trade Card")
         st.markdown(f"Asset: {asset_symbol}")
@@ -169,7 +170,7 @@ with col2:
         else:
             st.markdown("Live Price: N/A")
         
-        # Trade inputs & details in the preview
+        # Trade inputs & details.
         entry_price_default = price if price is not None else 82000.0
         entry = st.number_input("Entry Price", value=entry_price_default, format="%.2f")
         position = st.number_input("Position Size (£)", value=500.0)
