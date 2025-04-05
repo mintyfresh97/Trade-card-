@@ -137,15 +137,14 @@ def calculate_volume_strength(vol_df, ma_period=14):
 # ---------------------------
 st.markdown("<h1 style='color:white;'>PnL & Risk Dashboard</h1>", unsafe_allow_html=True)
 
-# Create two columns: left for asset selection and display data; right for editing key levels, chart, trade card, etc.
+# Create two columns:
+# LEFT COLUMN for asset selection, market data, and display of key levels & volume strength (the "orange box" area).
+# RIGHT COLUMN for editing key levels, styled Plotly chart, and trade card preview.
 col1, col2 = st.columns([1, 2])
 
-# LEFT COLUMN: 
-# 1) Asset selection
-# 2) Market data & sentiment
-# 3) Display key levels & volume strength (the "white box" data)
+# LEFT COLUMN:
 with col1:
-    # 1) Asset selection
+    # Asset selection
     display_names = list(coinpaprika_ids.keys())
     asset_display = st.selectbox("Select Asset", display_names)
     asset_symbol = asset_display.split("(")[-1].replace(")", "").strip()
@@ -155,7 +154,7 @@ with col1:
     else:
         st.warning("Icon not found")
     
-    # 2) Market data & sentiment
+    # Market data & sentiment
     price, daily_change, weekly_change, monthly_change = get_coin_data_from_paprika(asset_display)
     if price is not None:
         st.markdown(f"**Live Price:** ${price}")
@@ -170,7 +169,7 @@ with col1:
     sentiment, sentiment_score = get_social_sentiment(asset_display)
     st.markdown(f"**Social Sentiment:** {sentiment} (Score: {sentiment_score})")
     
-    # 3) Display key levels & volume strength (white box data)
+    # Display Key Levels & Volume Strength in a "white box" (the orange box area per your annotation)
     st.markdown("### Key Levels & Volume Strength")
     levels = get_levels_for_asset(asset_display)
     st.markdown(f"**Support:** {levels['support'] or 'N/A'}")
@@ -179,7 +178,7 @@ with col1:
     st.markdown(f"**Supply:** {levels['supply'] or 'N/A'}")
     st.markdown(f"**CHoCH:** {levels['choch'] or 'N/A'}")
     
-    # Create a dummy volume DataFrame for the selected asset & compute volume strength
+    # Dummy volume DataFrame (replace with actual volume data if available)
     vol_df = pd.DataFrame({
         "Date": pd.date_range("2023-01-01", periods=30, freq="D"),
         "Volume": np.random.randint(1000, 5000, 30)
@@ -189,11 +188,8 @@ with col1:
     st.markdown(f"**Volume Strength Score:** {vol_score:.1f} / 10")
 
 # RIGHT COLUMN:
-# 1) Key levels editing
-# 2) Plotly chart
-# 3) Collapsible trade card
 with col2:
-    # 1) Key Levels Editing
+    # Edit Key Levels Section
     st.subheader("Edit Key Levels")
     with st.expander("Modify Levels", expanded=False):
         new_support = st.text_input("Support", value=levels["support"])
@@ -201,7 +197,7 @@ with col2:
         new_resistance = st.text_input("Resistance", value=levels["resistance"])
         new_supply = st.text_input("Supply", value=levels["supply"])
         new_choch = st.text_input("CHoCH", value=levels["choch"])
-        if st.button("Save Levels"):
+        if st.button("Save Levels", key="save_levels"):
             updated_levels = {
                 "support": new_support,
                 "demand": new_demand,
@@ -212,7 +208,7 @@ with col2:
             save_levels_for_asset(asset_display, updated_levels)
             st.success("Levels updated!")
     
-    # 2) Plotly Chart: 24h % Change Heatmap
+    # Styled Plotly Chart: 24h % Change Heatmap
     df_chart = pd.DataFrame({
         "Symbol": ["BTC", "ETH", "ADA", "FARTCOIN", "SUI", "LINK", "ONDO", "CRV"],
         "Change (%)": [2.4, -1.3, 3.1, 11.7, 6.3, 5.6, -4.2, -2.8]
@@ -222,20 +218,35 @@ with col2:
         x="Symbol",
         y="Change (%)",
         color="Change (%)",
-        color_continuous_scale="RdYlGn",
+        # Custom color scale: red (low), yellow (mid), green (high)
+        color_continuous_scale=[(0, "red"), (0.5, "yellow"), (1, "green")],
+        range_color=(-5, 12),
         title="24h % Change Heatmap"
     )
+    # Update layout for dark styling
+    fig.update_layout(
+        template="plotly_dark",
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
+        font_color="white",
+        xaxis=dict(showgrid=False),
+        yaxis=dict(showgrid=False),
+        title_x=0.5
+    )
+    fig.update_coloraxes(showscale=False)
     st.plotly_chart(fig, use_container_width=True)
     
-    # 3) Collapsible Trade Card Preview
+    # Collapsible Trade Card Preview
     with st.expander("Show Trade Card Preview", expanded=False):
         st.subheader("Trade Card")
+        st.markdown(f"Asset: {asset_symbol}")
         if price is not None:
             st.markdown(f"Live Price: ${price}")
             st.markdown(f"24h Change: {daily_change}%")
         else:
             st.markdown("Live Price: N/A")
         
+        # Trade inputs & details.
         entry_price_default = price if price is not None else 82000.0
         entry = st.number_input("Entry Price", value=entry_price_default, format="%.2f")
         position = st.number_input("Position Size (£)", value=500.0)
@@ -362,7 +373,6 @@ with track_col1:
     strategy_used = st.text_input("Strategy Name", placeholder="e.g. EMA Bounce")
     trade_result = st.selectbox("Trade Outcome", ["Win", "Loss", "Break-even"])
 with track_col2:
-    # We assume rr_ratio, trade_date, etc. are already defined above, so we won't redefine them here.
     rr_logged = st.text_input("RR Ratio", value="1:1")
     notes = st.text_area("Additional Notes")
 
