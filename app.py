@@ -11,23 +11,31 @@ import plotly.express as px
 from streamlit_autorefresh import st_autorefresh
 
 # ---------------------------
-# 1. User Authentication
+# 1. User Authentication (Multiple Users Supported)
 # ---------------------------
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
+
+# Define a dictionary of valid users and their passwords
+valid_users = {
+    "admin": "password",
+    "user1": "password1",
+    "user2": "password2"
+}
 
 if not st.session_state.logged_in:
     st.sidebar.header("Login")
     username = st.sidebar.text_input("Username")
     password = st.sidebar.text_input("Password", type="password")
     if st.sidebar.button("Login"):
-        # Replace with a secure authentication method as needed
-        if username == "admin" and password == "password":
+        if username in valid_users and password == valid_users[username]:
             st.session_state.logged_in = True
+            st.session_state.username = username  # Save username in session
             st.success("Logged in successfully!")
+            st.experimental_rerun()  # Rerun to show main app
         else:
             st.error("Invalid credentials")
-    st.stop()
+    st.stop()  # Stop the script here if not logged in
 
 # ---------------------------
 # 2. Real-Time Data Updates (Auto Refresh)
@@ -86,7 +94,7 @@ def get_coin_data_from_paprika(name, vs_currency="USD"):
 def get_social_sentiment(coin):
     """
     Dummy function to simulate social sentiment analysis.
-    In production, integrate with a service (e.g., LunarCrush, Santiment).
+    In production, integrate with a real service (e.g., LunarCrush, Santiment).
     """
     sentiment_score = random.randint(-100, 100)
     if sentiment_score > 20:
@@ -135,9 +143,7 @@ with col1:
 
 # RIGHT COLUMN
 with col2:
-    # ---------------------------
     # Plotly Chart: 24h % Change Heatmap
-    # ---------------------------
     # Prepare a dummy DataFrame for the snapshot chart (replace with live multi‑coin data as needed)
     df = pd.DataFrame({
         "Symbol": ["BTC", "ETH", "ADA", "FARTCOIN", "SUI", "LINK", "ONDO", "CRV"],
@@ -153,9 +159,7 @@ with col2:
     )
     st.plotly_chart(fig, use_container_width=True)
     
-    # ---------------------------
     # Collapsible Trade Card Preview
-    # ---------------------------
     with st.expander("Show Trade Card Preview", expanded=False):
         st.subheader("Trade Card")
         st.markdown(f"Asset: {asset_symbol}")
@@ -165,7 +169,7 @@ with col2:
         else:
             st.markdown("Live Price: N/A")
         
-        # Trade inputs & details
+        # Trade inputs & details in the preview
         entry_price_default = price if price is not None else 82000.0
         entry = st.number_input("Entry Price", value=entry_price_default, format="%.2f")
         position = st.number_input("Position Size (£)", value=500.0)
