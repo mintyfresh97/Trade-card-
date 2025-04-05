@@ -7,19 +7,21 @@ import io
 import textwrap
 import pandas as pd
 
-# Define CoinGecko IDs and icon filenames
-coingecko_ids = {
-    'Bitcoin (BTC)': 'bitcoin',
-    'Ethereum (ETH)': 'ethereum',
-    'XRP (XRP)': 'ripple',
-    'Solana (SOL)': 'solana',
-    'Cardano (ADA)': 'cardano',
-    'Chainlink (LINK)': 'chainlink',
-    'Curve (CRV)': 'curve-dao-token',
-    'Convex (CVX)': 'convex-finance',
-    'Sui (SUI)': 'sui',
-    'Fartcoin (FARTCOIN)': 'fartcoin',
-    'Ondo (ONDO)': 'ondo-finance'
+# ------------------------------------------------------------------------------
+# Updated CoinPaprika IDs and icon filenames
+# ------------------------------------------------------------------------------
+coinpaprika_ids = {
+    'Bitcoin (BTC)': 'btc-bitcoin',
+    'Ethereum (ETH)': 'eth-ethereum',
+    'Cardano (ADA)': 'ada-cardano',
+    'Solana (SOL)': 'sol-solana',
+    'XRP (XRP)': 'xrp-xrp',
+    'Chainlink (LINK)': 'link-chainlink',
+    'Ondo (ONDO)': 'ondo-ondo',
+    'Sui (SUI)': 'sui-sui',
+    'Curve DAO Token (CRV)': 'crv-curve-dao-token',
+    'Convex Finance (CVX)': 'cvx-convex-finance',
+    'Based Fartcoin (FARTCOIN)': 'fartcoin-based-fartcoin'
 }
 
 icon_map = {
@@ -32,77 +34,28 @@ icon_map = {
 }
 
 # ------------------------------------------------------------------------------
-# 1) Fetch current price + optional 24h change (already in your code)
+# Fetch live price and percentage changes using CoinPaprika API
 # ------------------------------------------------------------------------------
-def get_crypto_price_from_coingecko(name, vs_currency="usd", include_24hr_change=False):
-    try:
-        coin_id = coingecko_ids.get(name)
-        if not coin_id:
-            raise ValueError("Unknown CoinGecko ID")
-        url = f"https://api.coingecko.com/api/v3/simple/price?ids={coin_id}&vs_currencies={vs_currency}"
-        if include_24hr_change:
-            url += "&include_24hr_change=true"
-        response = requests.get(url, timeout=5)
-        data = response.json()
-        if coin_id not in data or vs_currency not in data[coin_id]:
-            raise ValueError(f"Unexpected API response: {data}")
-        price = round(data[coin_id][vs_currency], 2)
-        if include_24hr_change:
-            change_key = f"{vs_currency}_24h_change"
-            if change_key in data[coin_id]:
-                change = round(data[coin_id][change_key], 2)
-                return price, change
-            else:
-                st.warning("24h change data not available")
-                return price, None
-        return price
-    except Exception as e:
-        st.error(f"CoinGecko API Error for {name}: {e}")
-        return None
-
-# ------------------------------------------------------------------------------
-# 2) Fetch daily (24h), weekly (7d), and monthly (30d) changes
-# ------------------------------------------------------------------------------
-def get_coin_market_data(name, vs_currency="usd"):
+def get_coin_data_from_paprika(name, vs_currency="USD"):
     """
-    Returns (daily_change, weekly_change, monthly_change) in percentages
-    from the /coins/markets endpoint.
+    Returns (price, daily_change, weekly_change, monthly_change) for the given coin.
     """
     try:
-        coin_id = coingecko_ids.get(name)
+        coin_id = coinpaprika_ids.get(name)
         if not coin_id:
-            raise ValueError("Unknown CoinGecko ID")
-
-        # We request 24h, 7d, and 30d percentage changes
-        url = (
-            f"https://api.coingecko.com/api/v3/coins/markets"
-            f"?vs_currency={vs_currency}&ids={coin_id}"
-            f"&price_change_percentage=24h,7d,30d"
-        )
-
+            raise ValueError("Unknown CoinPaprika ID for coin: " + name)
+        url = f"https://api.coinpaprika.com/v1/tickers/{coin_id}"
         response = requests.get(url, timeout=5)
         data = response.json()
-
-        if not data or not isinstance(data, list):
-            raise ValueError(f"Unexpected API response: {data}")
-
-        # data[0] should contain the coin data
-        coin_data = data[0]
-
-        # Safely get the percentage changes
-        daily = coin_data.get("price_change_percentage_24h_in_currency", 0)
-        weekly = coin_data.get("price_change_percentage_7d_in_currency", 0)
-        monthly = coin_data.get("price_change_percentage_30d_in_currency", 0)
-
-        # Round them
-        daily = round(daily, 2)
-        weekly = round(weekly, 2)
-        monthly = round(monthly, 2)
-
-        return daily, weekly, monthly
+        usd_data = data.get("quotes", {}).get(vs_currency, {})
+        price = round(usd_data.get("price", 0), 2)
+        daily = round(usd_data.get("percent_change_24h", 0), 2)
+        weekly = round(usd_data.get("percent_change_7d", 0), 2)
+        monthly = round(usd_data.get("percent_change_30d", 0), 2)
+        return price, daily, weekly, monthly
     except Exception as e:
-        st.error(f"CoinGecko Market Data Error for {name}: {e}")
-        return None, None, None
+        st.error(f"CoinPaprika API Error for {name}: {e}")
+        return None, None, None, None
 
 # ------------------------------------------------------------------------------
 # Streamlit Layout
@@ -113,7 +66,7 @@ st.markdown("<h1 style='color:white;'>PnL & Risk Dashboard</h1>", unsafe_allow_h
 col1, col2 = st.columns([1, 2])
 
 with col1:
-    display_names = list(coingecko_ids.keys())
+    display_names = list(coinpaprika_ids.keys())
     asset_display = st.selectbox("Select Asset", display_names)
     asset_symbol = asset_display.split("(")[-1].replace(")", "").strip()
     icon_path = f"assets/{icon_map.get(asset_symbol, '')}"
@@ -121,40 +74,21 @@ with col1:
         st.image(icon_path, width=32)
     else:
         st.warning("Icon not found")
-
-    # --------------------------------------------------------------------------
-    # Show daily, weekly, monthly changes for the selected coin
-    # --------------------------------------------------------------------------
-    daily_change, weekly_change, monthly_change = get_coin_market_data(asset_display)
-    if daily_change is not None:
+    
+    # Fetch CoinPaprika data
+    price, daily_change, weekly_change, monthly_change = get_coin_data_from_paprika(asset_display)
+    if price is not None:
+        st.markdown(f"**Live Price:** ${price}")
         st.markdown(
             f"**Daily (24h):** {daily_change}%  \n"
             f"**Weekly (7d):** {weekly_change}%  \n"
             f"**Monthly (30d):** {monthly_change}%"
         )
     else:
-        st.markdown("No daily/weekly/monthly data available.")
+        st.markdown("No market data available.")
 
-# --- Fetch Live Price with 24h Change (existing logic) ---
-try:
-    result = get_crypto_price_from_coingecko(asset_display, include_24hr_change=True)
-    if result is None:
-        live_price = None
-        change_24h = None
-        entry_price_default = 82000.0
-    elif isinstance(result, tuple):
-        live_price, change_24h = result
-        entry_price_default = float(live_price) if live_price is not None else 82000.0
-    else:
-        live_price = result
-        change_24h = None
-        entry_price_default = float(live_price) if live_price is not None else 82000.0
-except Exception as e:
-    st.warning(f"Price fetch error: {e}")
-    live_price = None
-    change_24h = None
-    entry_price_default = 82000.0
-
+# Use the fetched price as the default entry price
+entry_price_default = price if price is not None else 82000.0
 entry = st.number_input("Entry Price", value=entry_price_default, format="%.2f")
 
 # Other trade inputs
@@ -186,10 +120,9 @@ with col2:
     with st.expander("Show Trade Card Preview", expanded=False):
         st.subheader("Trade Card")
         st.markdown(f"Asset: {asset_symbol}")
-        if live_price is not None:
-            st.markdown(f"Live Price: {live_price}")
-            if change_24h is not None:
-                st.markdown(f"24h Change: {change_24h}%")
+        if price is not None:
+            st.markdown(f"Live Price: ${price}")
+            st.markdown(f"24h Change: {daily_change}%")
         else:
             st.markdown("Live Price: N/A")
         st.markdown(f"Position: £{position}")
@@ -220,7 +153,7 @@ if st.button("Download Trade Card"):
     lines.append("=== Trade Info ===")
     lines.append(f"Asset: {asset_symbol}")
     lines.append(f"Date: {trade_date}")
-    lines.append(f"Live Price: {live_price}")
+    lines.append(f"Live Price: ${price}")
 
     lines.append("")
     lines.append("=== Entry Setup ===")
