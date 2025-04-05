@@ -119,37 +119,39 @@ reward = abs(take_profit - entry) * total_exposure / entry
 breakeven = round((entry + stop_loss) / 2, 2)
 rr_ratio = round(reward / risk, 2) if risk != 0 else 0
 
+# Hide Trade Card Preview by default using an expander
 with col2:
-    st.subheader("Trade Card")
-    st.markdown(f"Asset: {asset_symbol}")
-    if live_price is not None:
-        st.markdown(f"Live Price: {live_price}")
-        if change_24h is not None:
-            st.markdown(f"24h Change: {change_24h}%")
-    else:
-        st.markdown("Live Price: N/A")
-    st.markdown(f"Position: £{position}")
-    st.markdown(f"Leverage: {leverage}x")
-    st.markdown(f"Entry: {entry}")
-    st.markdown(f"Stop Loss: {stop_loss}")
-    st.markdown(f"Take Profit: {take_profit}")
-    st.markdown(f"Risk: £{risk:.2f}")
-    st.markdown(f"Reward: £{reward:.2f}")
-    st.markdown(f"RR Ratio: {rr_ratio}:1")
-    st.markdown(f"Breakeven: {breakeven}")
-    st.markdown(f"Date: {trade_date}")
-    st.markdown(f"Entry TF: {entry_tf}")
-    st.markdown(f"Analysis TF: {analysis_tf}")
-    if strategy:
-        st.markdown(f"**Strategy:** {strategy}")
-    if news:
-        st.markdown(f"**News Catalyst:** {news}")
-    if execution:
-        st.markdown(f"**Execution Plan:** {execution}")
-    if psychology:
-        st.markdown(f"**Psychology Reminder:** {psychology}")
-    if tags:
-        st.markdown(f"**Tags:** {', '.join(tags)}")
+    with st.expander("Show Trade Card Preview", expanded=False):
+        st.subheader("Trade Card")
+        st.markdown(f"Asset: {asset_symbol}")
+        if live_price is not None:
+            st.markdown(f"Live Price: {live_price}")
+            if change_24h is not None:
+                st.markdown(f"24h Change: {change_24h}%")
+        else:
+            st.markdown("Live Price: N/A")
+        st.markdown(f"Position: £{position}")
+        st.markdown(f"Leverage: {leverage}x")
+        st.markdown(f"Entry: {entry}")
+        st.markdown(f"Stop Loss: {stop_loss}")
+        st.markdown(f"Take Profit: {take_profit}")
+        st.markdown(f"Risk: £{risk:.2f}")
+        st.markdown(f"Reward: £{reward:.2f}")
+        st.markdown(f"RR Ratio: {rr_ratio}:1")
+        st.markdown(f"Breakeven: {breakeven}")
+        st.markdown(f"Date: {trade_date}")
+        st.markdown(f"Entry TF: {entry_tf}")
+        st.markdown(f"Analysis TF: {analysis_tf}")
+        if strategy:
+            st.markdown(f"**Strategy:** {strategy}")
+        if news:
+            st.markdown(f"**News Catalyst:** {news}")
+        if execution:
+            st.markdown(f"**Execution Plan:** {execution}")
+        if psychology:
+            st.markdown(f"**Psychology Reminder:** {psychology}")
+        if tags:
+            st.markdown(f"**Tags:** {', '.join(tags)}")
 
 if st.button("Download Trade Card"):
     lines = []
