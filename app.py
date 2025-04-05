@@ -31,7 +31,9 @@ icon_map = {
     "FARTCOIN": "fartcoin-logo.png"
 }
 
-# Function to fetch live price (and optionally 24h change) from CoinGecko
+# ------------------------------------------------------------------------------
+# 1) Fetch current price + optional 24h change (already in your code)
+# ------------------------------------------------------------------------------
 def get_crypto_price_from_coingecko(name, vs_currency="usd", include_24hr_change=False):
     try:
         coin_id = coingecko_ids.get(name)
@@ -58,6 +60,53 @@ def get_crypto_price_from_coingecko(name, vs_currency="usd", include_24hr_change
         st.error(f"CoinGecko API Error for {name}: {e}")
         return None
 
+# ------------------------------------------------------------------------------
+# 2) Fetch daily (24h), weekly (7d), and monthly (30d) changes
+# ------------------------------------------------------------------------------
+def get_coin_market_data(name, vs_currency="usd"):
+    """
+    Returns (daily_change, weekly_change, monthly_change) in percentages
+    from the /coins/markets endpoint.
+    """
+    try:
+        coin_id = coingecko_ids.get(name)
+        if not coin_id:
+            raise ValueError("Unknown CoinGecko ID")
+
+        # We request 24h, 7d, and 30d percentage changes
+        url = (
+            f"https://api.coingecko.com/api/v3/coins/markets"
+            f"?vs_currency={vs_currency}&ids={coin_id}"
+            f"&price_change_percentage=24h,7d,30d"
+        )
+
+        response = requests.get(url, timeout=5)
+        data = response.json()
+
+        if not data or not isinstance(data, list):
+            raise ValueError(f"Unexpected API response: {data}")
+
+        # data[0] should contain the coin data
+        coin_data = data[0]
+
+        # Safely get the percentage changes
+        daily = coin_data.get("price_change_percentage_24h_in_currency", 0)
+        weekly = coin_data.get("price_change_percentage_7d_in_currency", 0)
+        monthly = coin_data.get("price_change_percentage_30d_in_currency", 0)
+
+        # Round them
+        daily = round(daily, 2)
+        weekly = round(weekly, 2)
+        monthly = round(monthly, 2)
+
+        return daily, weekly, monthly
+    except Exception as e:
+        st.error(f"CoinGecko Market Data Error for {name}: {e}")
+        return None, None, None
+
+# ------------------------------------------------------------------------------
+# Streamlit Layout
+# ------------------------------------------------------------------------------
 st.set_page_config(page_title="PnL & Risk Dashboard", layout="wide")
 st.markdown("<h1 style='color:white;'>PnL & Risk Dashboard</h1>", unsafe_allow_html=True)
 
@@ -73,7 +122,20 @@ with col1:
     else:
         st.warning("Icon not found")
 
-# --- Fetch Live Price with 24h Change ---
+    # --------------------------------------------------------------------------
+    # Show daily, weekly, monthly changes for the selected coin
+    # --------------------------------------------------------------------------
+    daily_change, weekly_change, monthly_change = get_coin_market_data(asset_display)
+    if daily_change is not None:
+        st.markdown(
+            f"**Daily (24h):** {daily_change}%  \n"
+            f"**Weekly (7d):** {weekly_change}%  \n"
+            f"**Monthly (30d):** {monthly_change}%"
+        )
+    else:
+        st.markdown("No daily/weekly/monthly data available.")
+
+# --- Fetch Live Price with 24h Change (existing logic) ---
 try:
     result = get_crypto_price_from_coingecko(asset_display, include_24hr_change=True)
     if result is None:
