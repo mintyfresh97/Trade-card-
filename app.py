@@ -1,15 +1,44 @@
 import streamlit as st
+from datetime import datetime, date
 import requests
 import os
-from datetime import datetime
 from PIL import Image, ImageDraw, ImageFont
 import io
 import textwrap
 import pandas as pd
+import random
 
-# ------------------------------------------------------------------------------
+# ---------------------------
+# 1. User Authentication
+# ---------------------------
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+
+if not st.session_state.logged_in:
+    st.sidebar.header("Login")
+    username = st.sidebar.text_input("Username")
+    password = st.sidebar.text_input("Password", type="password")
+    if st.sidebar.button("Login"):
+        # Simple hardcoded credentials; replace with a secure method as needed.
+        if username == "admin" and password == "password":
+            st.session_state.logged_in = True
+            st.success("Logged in successfully!")
+        else:
+            st.error("Invalid credentials")
+    st.stop()
+
+# ---------------------------
+# 2. Real-Time Data Updates
+# ---------------------------
+# Requires streamlit-autorefresh: pip install streamlit-autorefresh
+from streamlit_autorefresh import st_autorefresh
+# Auto-refresh every 30 seconds (30,000 milliseconds); limit to 100 refreshes
+st_autorefresh(interval=30000, limit=100, key="autorefresh")
+
+# ---------------------------
+# 3. Data & API Functions
+# ---------------------------
 # Updated CoinPaprika IDs and icon filenames
-# ------------------------------------------------------------------------------
 coinpaprika_ids = {
     'Bitcoin (BTC)': 'btc-bitcoin',
     'Ethereum (ETH)': 'eth-ethereum',
@@ -33,9 +62,6 @@ icon_map = {
     "FARTCOIN": "fartcoin-logo.png"
 }
 
-# ------------------------------------------------------------------------------
-# Fetch live price and percentage changes using CoinPaprika API
-# ------------------------------------------------------------------------------
 def get_coin_data_from_paprika(name, vs_currency="USD"):
     """
     Returns (price, daily_change, weekly_change, monthly_change) for the given coin.
@@ -57,9 +83,23 @@ def get_coin_data_from_paprika(name, vs_currency="USD"):
         st.error(f"CoinPaprika API Error for {name}: {e}")
         return None, None, None, None
 
-# ------------------------------------------------------------------------------
-# Streamlit Layout
-# ------------------------------------------------------------------------------
+def get_social_sentiment(coin):
+    """
+    Dummy function to simulate social sentiment analysis.
+    Returns a sentiment label and a sentiment score.
+    """
+    sentiment_score = random.randint(-100, 100)
+    if sentiment_score > 20:
+        sentiment = "Positive"
+    elif sentiment_score < -20:
+        sentiment = "Negative"
+    else:
+        sentiment = "Neutral"
+    return sentiment, sentiment_score
+
+# ---------------------------
+# 4. Layout and Main App
+# ---------------------------
 st.set_page_config(page_title="PnL & Risk Dashboard", layout="wide")
 st.markdown("<h1 style='color:white;'>PnL & Risk Dashboard</h1>", unsafe_allow_html=True)
 
@@ -75,7 +115,7 @@ with col1:
     else:
         st.warning("Icon not found")
     
-    # Fetch CoinPaprika data
+    # Fetch market data from CoinPaprika
     price, daily_change, weekly_change, monthly_change = get_coin_data_from_paprika(asset_display)
     if price is not None:
         st.markdown(f"**Live Price:** ${price}")
@@ -86,6 +126,10 @@ with col1:
         )
     else:
         st.markdown("No market data available.")
+    
+    # Social Sentiment Analysis (Dummy Data)
+    sentiment, sentiment_score = get_social_sentiment(asset_display)
+    st.markdown(f"**Social Sentiment:** {sentiment} (Score: {sentiment_score})")
 
 # Use the fetched price as the default entry price
 entry_price_default = price if price is not None else 82000.0
@@ -115,7 +159,7 @@ reward = abs(take_profit - entry) * total_exposure / entry
 breakeven = round((entry + stop_loss) / 2, 2)
 rr_ratio = round(reward / risk, 2) if risk != 0 else 0
 
-# Hide Trade Card Preview by default using an expander
+# Trade Card Preview (hidden by default)
 with col2:
     with st.expander("Show Trade Card Preview", expanded=False):
         st.subheader("Trade Card")
@@ -199,7 +243,6 @@ if st.button("Download Trade Card"):
     title = f"{asset_name} Risk Setup"
     bbox = heading_font.getbbox(title)
     title_w = bbox[2] - bbox[0]
-    title_h = bbox[3] - bbox[1]
     draw.text(((700 - title_w) // 2, 30), title, font=heading_font, fill=(255, 255, 255))
 
     # Logo
@@ -228,6 +271,9 @@ if st.button("Download Trade Card"):
         mime="image/png"
     )
 
+# ---------------------------
+# 5. Trade Log & Advanced Analytics
+# ---------------------------
 st.markdown("---")
 st.header("Strategy Tracker")
 
@@ -240,7 +286,6 @@ with track_col2:
     rr_logged = st.text_input("RR Ratio", value=f"{rr_ratio}:1")
     notes = st.text_area("Additional Notes")
 
-# Save trade log
 if st.button("Save Trade to Log"):
     trade_data = {
         "Date": [trade_date],
@@ -250,7 +295,6 @@ if st.button("Save Trade to Log"):
         "Outcome": [trade_result],
         "Notes": [notes],
     }
-
     df_new = pd.DataFrame(trade_data)
     log_path = "trade_log.csv"
     if os.path.exists(log_path):
@@ -258,17 +302,24 @@ if st.button("Save Trade to Log"):
         df_all = pd.concat([df_existing, df_new], ignore_index=True)
     else:
         df_all = df_new
-
     df_all.to_csv(log_path, index=False)
     st.success("Trade saved to log!")
 
-# Show history
 if os.path.exists("trade_log.csv"):
     st.markdown("### Trade History")
     df_hist = pd.read_csv("trade_log.csv")
     st.dataframe(df_hist)
 
-    # Stats
+    # Advanced Filtering and Analytics (Sidebar)
+    st.sidebar.header("Filter Trade History")
+    date_filter = st.sidebar.date_input("Select Date Range", [])
+    if date_filter and len(date_filter) == 2:
+        start_date, end_date = date_filter
+        df_hist['Date'] = pd.to_datetime(df_hist['Date'], errors='coerce')
+        df_filtered = df_hist[(df_hist['Date'] >= pd.to_datetime(start_date)) & (df_hist['Date'] <= pd.to_datetime(end_date))]
+        st.write("Filtered Trade History:")
+        st.dataframe(df_filtered)
+
     st.markdown("### Performance Summary")
     total = len(df_hist)
     wins = len(df_hist[df_hist["Outcome"] == "Win"])
@@ -278,19 +329,15 @@ if os.path.exists("trade_log.csv"):
     st.write(f"Win Rate: {win_rate}%")
     st.write(f"Most Used Strategy: {df_hist['Strategy'].mode()[0] if total > 0 else '-'}")
 
-# --- Streamlit Charts and Export ---
 if os.path.exists("trade_log.csv"):
     st.markdown("### Trade Analytics")
-
     df_hist = pd.read_csv("trade_log.csv")
     df_hist['Date'] = pd.to_datetime(df_hist['Date'], errors='coerce')
 
-    # Outcome bar chart
     st.subheader("Trade Outcomes")
     outcome_counts = df_hist['Outcome'].value_counts()
     st.bar_chart(outcome_counts)
 
-    # RR ratio line chart
     try:
         df_hist['RR Numeric'] = df_hist['RR Ratio'].str.extract('([0-9\.]+)').astype(float)
         df_hist_sorted = df_hist.sort_values("Date")
@@ -300,7 +347,6 @@ if os.path.exists("trade_log.csv"):
     except Exception as e:
         st.warning(f"Could not plot RR Ratio chart: {e}")
 
-    # CSV export
     st.download_button(
         label="Download Trade History CSV",
         data=df_hist.to_csv(index=False),
