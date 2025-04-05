@@ -31,16 +31,29 @@ icon_map = {
     "FARTCOIN": "fartcoin-logo.png"
 }
 
-# Function to fetch the live crypto price from CoinGecko
-def get_crypto_price_from_coingecko(name):
+# Function to fetch live price (and optionally 24h change) from CoinGecko
+def get_crypto_price_from_coingecko(name, vs_currency="usd", include_24hr_change=False):
     try:
         coin_id = coingecko_ids.get(name)
         if not coin_id:
             raise ValueError("Unknown CoinGecko ID")
-        url = f"https://api.coingecko.com/api/v3/simple/price?ids={coin_id}&vs_currencies=usd"
+        url = f"https://api.coingecko.com/api/v3/simple/price?ids={coin_id}&vs_currencies={vs_currency}"
+        if include_24hr_change:
+            url += "&include_24hr_change=true"
         response = requests.get(url, timeout=5)
         data = response.json()
-        return round(data[coin_id]['usd'], 2)
+        if coin_id not in data or vs_currency not in data[coin_id]:
+            raise ValueError(f"Unexpected API response: {data}")
+        price = round(data[coin_id][vs_currency], 2)
+        if include_24hr_change:
+            change_key = f"{vs_currency}_24h_change"
+            if change_key in data[coin_id]:
+                change = round(data[coin_id][change_key], 2)
+                return price, change
+            else:
+                st.warning("24h change data not available")
+                return price, None
+        return price
     except Exception as e:
         st.error(f"CoinGecko API Error for {name}: {e}")
         return None
@@ -60,13 +73,24 @@ with col1:
     else:
         st.warning("Icon not found")
 
-# --- Entry Price Unified Input with Safe Fallback ---
+# --- Fetch Live Price with 24h Change ---
 try:
-    live_price = get_crypto_price_from_coingecko(asset_display)
-    entry_price_default = float(live_price) if live_price is not None else 82000.0
+    result = get_crypto_price_from_coingecko(asset_display, include_24hr_change=True)
+    if result is None:
+        live_price = None
+        change_24h = None
+        entry_price_default = 82000.0
+    elif isinstance(result, tuple):
+        live_price, change_24h = result
+        entry_price_default = float(live_price) if live_price is not None else 82000.0
+    else:
+        live_price = result
+        change_24h = None
+        entry_price_default = float(live_price) if live_price is not None else 82000.0
 except Exception as e:
     st.warning(f"Price fetch error: {e}")
     live_price = None
+    change_24h = None
     entry_price_default = 82000.0
 
 entry = st.number_input("Entry Price", value=entry_price_default, format="%.2f")
@@ -98,7 +122,12 @@ rr_ratio = round(reward / risk, 2) if risk != 0 else 0
 with col2:
     st.subheader("Trade Card")
     st.markdown(f"Asset: {asset_symbol}")
-    st.markdown(f"Live Price: {live_price if live_price else 'N/A'}")
+    if live_price is not None:
+        st.markdown(f"Live Price: {live_price}")
+        if change_24h is not None:
+            st.markdown(f"24h Change: {change_24h}%")
+    else:
+        st.markdown("Live Price: N/A")
     st.markdown(f"Position: £{position}")
     st.markdown(f"Leverage: {leverage}x")
     st.markdown(f"Entry: {entry}")
