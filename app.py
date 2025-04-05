@@ -1,4 +1,3 @@
-
 import streamlit as st
 import requests
 import os
@@ -6,7 +5,9 @@ from datetime import datetime
 from PIL import Image, ImageDraw, ImageFont
 import io
 import textwrap
+import pandas as pd
 
+# Define CoinGecko IDs and icon filenames
 coingecko_ids = {
     'Bitcoin (BTC)': 'bitcoin',
     'Ethereum (ETH)': 'ethereum',
@@ -30,6 +31,7 @@ icon_map = {
     "FARTCOIN": "fartcoin-logo.png"
 }
 
+# Function to fetch the live crypto price from CoinGecko
 def get_crypto_price_from_coingecko(name):
     try:
         coin_id = coingecko_ids.get(name)
@@ -58,57 +60,20 @@ with col1:
     else:
         st.warning("Icon not found")
 
-
-# --- Live price fetch ---
-def get_crypto_price_from_coingecko(name):
-    try:
-        coin_id = coingecko_ids.get(name)
-        if not coin_id:
-            raise ValueError("Unknown CoinGecko ID")
-        url = f"https://api.coingecko.com/api/v3/simple/price?ids={coin_id}&vs_currencies=usd"
-        response = requests.get(url, timeout=5)
-        data = response.json()
-        return round(data[coin_id]['usd'], 2)
-    except Exception as e:
-        st.error(f"CoinGecko API Error for {name}: {e}")
-        return None
-
-# --- Entry Price from Live API ---
-# --- Entry Price unified input with safe fallback ---
+# --- Entry Price Unified Input with Safe Fallback ---
 try:
     live_price = get_crypto_price_from_coingecko(asset_display)
+    entry_price_default = float(live_price) if live_price is not None else 82000.0
 except Exception as e:
     st.warning(f"Price fetch error: {e}")
     live_price = None
+    entry_price_default = 82000.0
 
-entry_price_default = float(live_price) if live_price else 82000.0
 entry = st.number_input("Entry Price", value=entry_price_default, format="%.2f")
-    else:
-        entry = st.number_input("Entry Price", value=82000.0, format="%.2f")
-except Exception as e:
-    st.warning(f"Price fetch error: {e}")
-    entry = st.number_input("Entry Price", value=82000.0, format="%.2f")
-    live_price = "Not available"
 
-
-position = st.number_input("Position Size (Â£)", value=500.0)
+# Other trade inputs
+position = st.number_input("Position Size (£)", value=500.0)
 leverage = st.number_input("Leverage", value=20)
-
-# --- Entry Price unified input with safe fallback ---
-try:
-    live_price = get_crypto_price_from_coingecko(asset_display)
-except Exception as e:
-    st.warning(f"Price fetch error: {e}")
-    live_price = None
-
-entry_price_default = float(live_price) if live_price else 82000.0
-entry = st.number_input("Entry Price", value=entry_price_default, format="%.2f")
-    else:
-        entry = st.number_input("Entry Price", value=82000.0, format="%.2f")
-except:
-    entry = st.number_input("Entry Price", value=82000.0, format="%.2f")
-    live_price = "Not available"
-
 stop_loss = st.number_input("Stop Loss", value=round(entry * 0.99, 2), format="%.2f")
 take_profit = st.number_input("Take Profit", value=round(entry * 1.02, 2), format="%.2f")
 
@@ -134,13 +99,13 @@ with col2:
     st.subheader("Trade Card")
     st.markdown(f"Asset: {asset_symbol}")
     st.markdown(f"Live Price: {live_price if live_price else 'N/A'}")
-    st.markdown(f"Position: Â£{position}")
+    st.markdown(f"Position: £{position}")
     st.markdown(f"Leverage: {leverage}x")
     st.markdown(f"Entry: {entry}")
     st.markdown(f"Stop Loss: {stop_loss}")
     st.markdown(f"Take Profit: {take_profit}")
-    st.markdown(f"Risk: Â£{risk:.2f}")
-    st.markdown(f"Reward: Â£{reward:.2f}")
+    st.markdown(f"Risk: £{risk:.2f}")
+    st.markdown(f"Reward: £{reward:.2f}")
     st.markdown(f"RR Ratio: {rr_ratio}:1")
     st.markdown(f"Breakeven: {breakeven}")
     st.markdown(f"Date: {trade_date}")
@@ -169,8 +134,8 @@ if st.button("Download Trade Card"):
     lines.append(f"Entry: {entry}")
     lines.append(f"Stop: {stop_loss}")
     lines.append(f"Target: {take_profit}")
-    lines.append(f"Risk: Â£{risk:.2f}")
-    lines.append(f"Reward: Â£{reward:.2f}")
+    lines.append(f"Risk: £{risk:.2f}")
+    lines.append(f"Reward: £{reward:.2f}")
     lines.append(f"RR Ratio: {rr_ratio}:1")
     lines.append(f"Breakeven: {breakeven}")
 
@@ -204,7 +169,6 @@ if st.button("Download Trade Card"):
         heading_font = body_font = ImageFont.load_default()
 
     # Centered heading
-    # Centered heading
     asset_name = asset_display.split("(")[0].strip()
     title = f"{asset_name} Risk Setup"
     bbox = heading_font.getbbox(title)
@@ -237,11 +201,6 @@ if st.button("Download Trade Card"):
         file_name=f"trade_card_{asset_symbol}_{trade_date}.png",
         mime="image/png"
     )
-
-
-
-import pandas as pd
-import os
 
 st.markdown("---")
 st.header("Strategy Tracker")
@@ -292,8 +251,6 @@ if os.path.exists("trade_log.csv"):
     st.write(f"Total Trades: {total}")
     st.write(f"Win Rate: {win_rate}%")
     st.write(f"Most Used Strategy: {df_hist['Strategy'].mode()[0] if total > 0 else '-'}")
-
-
 
 # --- Streamlit Charts and Export ---
 if os.path.exists("trade_log.csv"):
