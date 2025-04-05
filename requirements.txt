@@ -3,3 +3,5 @@ requests
 pillow
 pandas
 streamlit-autorefresh
+plotly
+
