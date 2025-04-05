@@ -6,6 +6,7 @@ from PIL import Image, ImageDraw, ImageFont
 import io
 import textwrap
 import pandas as pd
+import numpy as np
 import random
 import plotly.express as px
 from streamlit_autorefresh import st_autorefresh
@@ -83,11 +84,60 @@ def get_social_sentiment(coin):
     return sentiment, sentiment_score
 
 # ---------------------------
+# Key Levels & Volume Strength Functions
+# ---------------------------
+# Initialize session state for storing key levels if not present.
+if "levels_data" not in st.session_state:
+    st.session_state["levels_data"] = {}
+
+def get_levels_for_asset(asset_name):
+    """
+    Retrieve or create the levels dictionary for a given asset.
+    """
+    if asset_name not in st.session_state["levels_data"]:
+        st.session_state["levels_data"][asset_name] = {
+            "support": "",
+            "demand": "",
+            "resistance": "",
+            "supply": "",
+            "choch": ""
+        }
+    return st.session_state["levels_data"][asset_name]
+
+def save_levels_for_asset(asset_name, levels):
+    """
+    Save the updated levels for the asset in session state.
+    """
+    st.session_state["levels_data"][asset_name] = levels
+
+def calculate_volume_strength(vol_df, ma_period=14):
+    """
+    Calculate a volume strength score by comparing the latest volume to a 14-period moving average.
+    The score is scaled from 0 to 10.
+    """
+    vol_df = vol_df.copy()
+    vol_df["VolumeMA"] = vol_df["Volume"].rolling(window=ma_period).mean()
+    if len(vol_df) < ma_period:
+        return 0.0
+    last_vol = vol_df["Volume"].iloc[-1]
+    last_ma = vol_df["VolumeMA"].iloc[-1]
+    if pd.isna(last_ma):
+        return 0.0
+    ratio = last_vol / last_ma
+    if ratio < 0.5:
+        vol_score = 0.0
+    elif ratio > 2.0:
+        vol_score = 10.0
+    else:
+        vol_score = (ratio - 0.5) / (2.0 - 0.5) * 10.0
+    return vol_score
+
+# ---------------------------
 # Layout and Main App
 # ---------------------------
 st.markdown("<h1 style='color:white;'>PnL & Risk Dashboard</h1>", unsafe_allow_html=True)
 
-# Create two columns: left for asset selection and market data; right for charts and trade card preview.
+# Create two columns: left for asset selection and market data; right for charts, key levels, and trade card preview.
 col1, col2 = st.columns([1, 2])
 
 # LEFT COLUMN: Asset selection, market data, and sentiment.
@@ -115,16 +165,50 @@ with col1:
     sentiment, sentiment_score = get_social_sentiment(asset_display)
     st.markdown(f"**Social Sentiment:** {sentiment} (Score: {sentiment_score})")
 
-# RIGHT COLUMN: Plotly chart and collapsible Trade Card preview.
+# RIGHT COLUMN: Key Levels, Volume Strength, Plotly chart, and collapsible Trade Card preview.
 with col2:
-    # Plotly Chart: 24h % Change Heatmap.
-    # (This example uses a dummy DataFrame; replace with live multi-coin data as needed.)
-    df = pd.DataFrame({
+    # --- Key Levels & Volume Strength Section ---
+    st.subheader("Key Levels & Volume Strength")
+    # Retrieve key levels for the selected asset.
+    levels = get_levels_for_asset(asset_display)
+    with st.expander("Edit Key Levels", expanded=False):
+        new_support = st.text_input("Support", value=levels["support"])
+        new_demand = st.text_input("Demand", value=levels["demand"])
+        new_resistance = st.text_input("Resistance", value=levels["resistance"])
+        new_supply = st.text_input("Supply", value=levels["supply"])
+        new_choch = st.text_input("CHoCH", value=levels["choch"])
+        if st.button("Save Levels", key="save_levels"):
+            updated_levels = {
+                "support": new_support,
+                "demand": new_demand,
+                "resistance": new_resistance,
+                "supply": new_supply,
+                "choch": new_choch
+            }
+            save_levels_for_asset(asset_display, updated_levels)
+            st.success("Levels updated!")
+    st.markdown(f"**Support:** {levels['support'] or 'N/A'}")
+    st.markdown(f"**Demand:** {levels['demand'] or 'N/A'}")
+    st.markdown(f"**Resistance:** {levels['resistance'] or 'N/A'}")
+    st.markdown(f"**Supply:** {levels['supply'] or 'N/A'}")
+    st.markdown(f"**CHoCH:** {levels['choch'] or 'N/A'}")
+    
+    # Create a dummy volume DataFrame for the selected asset.
+    vol_df = pd.DataFrame({
+        "Date": pd.date_range("2023-01-01", periods=30, freq="D"),
+        "Volume": np.random.randint(1000, 5000, 30)
+    })
+    vol_df.sort_values("Date", inplace=True)
+    vol_score = calculate_volume_strength(vol_df)
+    st.markdown(f"**Volume Strength Score:** {vol_score:.1f} / 10")
+    
+    # --- Plotly Chart: 24h % Change Heatmap ---
+    df_chart = pd.DataFrame({
         "Symbol": ["BTC", "ETH", "ADA", "FARTCOIN", "SUI", "LINK", "ONDO", "CRV"],
         "Change (%)": [2.4, -1.3, 3.1, 11.7, 6.3, 5.6, -4.2, -2.8]
     })
     fig = px.bar(
-        df,
+        df_chart,
         x="Symbol",
         y="Change (%)",
         color="Change (%)",
@@ -133,7 +217,7 @@ with col2:
     )
     st.plotly_chart(fig, use_container_width=True)
     
-    # Collapsible Trade Card Preview.
+    # --- Collapsible Trade Card Preview ---
     with st.expander("Show Trade Card Preview", expanded=False):
         st.subheader("Trade Card")
         st.markdown(f"Asset: {asset_symbol}")
