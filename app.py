@@ -11,7 +11,6 @@ import numpy as np
 import random
 import plotly.express as px
 from streamlit_autorefresh import st_autorefresh
-import shutil
 
 # Set page configuration as the very first Streamlit command.
 st.set_page_config(page_title="PnL & Risk Dashboard", layout="wide")
@@ -110,7 +109,7 @@ def get_levels_for_asset(asset_name):
             "resistance": "",
             "supply": "",
             "choch": "",
-            "chart_path": ""  # To store the filename of the uploaded chart image
+            "chart_path": ""  # store the filename of the uploaded chart image
         }
     return st.session_state["levels_data"][asset_name]
 
@@ -141,23 +140,27 @@ def calculate_volume_strength(vol_df, ma_period=14):
 st.markdown("<h1 style='color:white;'>PnL & Risk Dashboard</h1>", unsafe_allow_html=True)
 
 # Create two columns:
-# LEFT COLUMN ("Orange Box"): Displays asset selection, live data, key levels, volume strength, and uploaded chart.
-# RIGHT COLUMN: Contains editing functionality (key levels and chart upload), styled Plotly chart, and trade card preview.
+# LEFT COLUMN: displays asset selection, live data, key levels, volume strength
+# RIGHT COLUMN: user modifies key levels, uploads chart, and sees the chart
 col1, col2 = st.columns([1, 2])
 
-# LEFT COLUMN:
+CHARTS_DIR = "charts"
+if not os.path.exists(CHARTS_DIR):
+    os.makedirs(CHARTS_DIR)
+
+# LEFT COLUMN
 with col1:
-    # Asset selection
     display_names = list(coinpaprika_ids.keys())
     asset_display = st.selectbox("Select Asset", display_names)
     asset_symbol = asset_display.split("(")[-1].replace(")", "").strip()
+    
     icon_path = f"assets/{icon_map.get(asset_symbol, '')}"
     if os.path.exists(icon_path):
         st.image(icon_path, width=32)
     else:
         st.warning("Icon not found")
-    
-    # Market data & sentiment
+
+    # Live price data
     price, daily_change, weekly_change, monthly_change = get_coin_data_from_paprika(asset_display)
     if price is not None:
         st.markdown(f"**Live Price:** ${price}")
@@ -171,29 +174,17 @@ with col1:
     
     sentiment, sentiment_score = get_social_sentiment(asset_display)
     st.markdown(f"**Social Sentiment:** {sentiment} (Score: {sentiment_score})")
-    
-    # Display Key Levels & Volume Strength
-    st.markdown("### Key Levels & Volume Strength")
+
+    # Key levels and volume strength
     levels = get_levels_for_asset(asset_display)
+    st.markdown("### Key Levels & Volume Strength")
     st.markdown(f"**Support:** {levels['support'] or 'N/A'}")
     st.markdown(f"**Demand:** {levels['demand'] or 'N/A'}")
     st.markdown(f"**Resistance:** {levels['resistance'] or 'N/A'}")
     st.markdown(f"**Supply:** {levels['supply'] or 'N/A'}")
     st.markdown(f"**CHoCH:** {levels['choch'] or 'N/A'}")
-    
-    # Display uploaded chart if available
-    CHARTS_DIR = "charts"
-    chart_filename = levels.get("chart_path")
-    if chart_filename:
-        chart_path = os.path.join(CHARTS_DIR, chart_filename)
-        if os.path.exists(chart_path):
-            st.image(chart_path, caption=f"{asset_symbol} Chart Analysis", use_container_width=True)
-        else:
-            st.info("Chart file not found. Please upload again.")
-    else:
-        st.info("No chart uploaded yet for this asset.")
-    
-    # Dummy volume data (replace with actual volume data if available)
+
+    # Volume Strength
     vol_df = pd.DataFrame({
         "Date": pd.date_range("2023-01-01", periods=30, freq="D"),
         "Volume": np.random.randint(1000, 5000, 30)
@@ -201,20 +192,21 @@ with col1:
     vol_df.sort_values("Date", inplace=True)
     vol_score = calculate_volume_strength(vol_df)
     st.markdown(f"**Volume Strength Score:** {vol_score:.1f} / 10")
-    
-# RIGHT COLUMN:
+
+# RIGHT COLUMN
 with col2:
-    st.subheader("Edit Key Levels / Upload Chart / Daily Analysis")
-    with st.expander("Modify Levels & Upload Chart", expanded=False):
+    st.subheader("Edit Key Levels / Upload Chart")
+    with st.expander("Modify Levels & Chart", expanded=False):
         new_support = st.text_input("Support", value=levels["support"])
         new_demand = st.text_input("Demand", value=levels["demand"])
         new_resistance = st.text_input("Resistance", value=levels["resistance"])
         new_supply = st.text_input("Supply", value=levels["supply"])
         new_choch = st.text_input("CHoCH", value=levels["choch"])
-        st.markdown("---")
+
         st.markdown("#### Upload Chart Analysis")
         uploaded_file = st.file_uploader("Drag and drop your chart image (PNG/JPG)", type=["png", "jpg", "jpeg"])
-        if st.button("Save Levels & Chart", key="save_levels"):
+
+        if st.button("Save Levels & Chart"):
             updated_levels = {
                 "support": new_support,
                 "demand": new_demand,
@@ -231,32 +223,28 @@ with col2:
                 with open(file_path, "wb") as f:
                     f.write(uploaded_file.getvalue())
                 updated_levels["chart_path"] = filename
+            
             save_levels_for_asset(asset_display, updated_levels)
             st.success("Levels and chart updated!")
             st.experimental_rerun()
     
-    # Display a styled Plotly chart with a heading like "Bitcoin Daily Analysis"
+    # Show the uploaded chart on the right with a heading
     st.subheader(f"{asset_symbol} Daily Analysis")
-    # Here you can use your own data; for demonstration, we'll use dummy data.
-    df_daily = pd.DataFrame({
-        "Time": pd.date_range("2023-04-03", periods=10, freq="H"),
-        "Price": np.random.uniform(30000, 40000, 10)
-    })
-    # Create a line chart for daily price analysis
-    fig_daily = px.line(df_daily, x="Time", y="Price", title=f"{asset_symbol} Daily Analysis")
-    fig_daily.update_layout(
-        template="plotly_white",
-        plot_bgcolor="rgba(0,0,0,0)",
-        paper_bgcolor="rgba(0,0,0,0)",
-        font_color="black",
-        title_x=0.5
-    )
-    st.plotly_chart(fig_daily, use_container_width=True)
-    
-    # Collapsible Trade Card Preview remains.
+
+    # Display the chart if one has been uploaded
+    chart_filename = levels.get("chart_path", "")
+    if chart_filename:
+        chart_path = os.path.join(CHARTS_DIR, chart_filename)
+        if os.path.exists(chart_path):
+            st.image(chart_path, caption=f"{asset_symbol} Chart Analysis", use_container_width=True)
+        else:
+            st.info("Chart file not found. Please upload again.")
+    else:
+        st.info("No chart uploaded yet for this asset.")
+
+    # Collapsible Trade Card Preview
     with st.expander("Show Trade Card Preview", expanded=False):
         st.subheader("Trade Card")
-        st.markdown(f"Asset: {asset_symbol}")
         if price is not None:
             st.markdown(f"Live Price: ${price}")
             st.markdown(f"24h Change: {daily_change}%")
