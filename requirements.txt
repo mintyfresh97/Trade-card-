@@ -4,5 +4,3 @@ pillow
 pandas
 plotly
 streamlit-autorefresh
-twilio
-numpy
