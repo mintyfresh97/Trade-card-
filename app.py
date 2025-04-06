@@ -18,7 +18,6 @@ st.set_page_config(page_title="PnL & Risk Dashboard", layout="wide")
 # ---------------------------
 # Real-Time Data Updates (Auto Refresh)
 # ---------------------------
-# Auto-refresh every 30 seconds (30,000 ms); up to 100 refreshes.
 st_autorefresh(interval=30000, limit=100, key="autorefresh")
 
 # ---------------------------
@@ -42,16 +41,13 @@ def save_levels_to_file(levels_data):
     except Exception as e:
         st.error(f"Error saving levels file: {e}")
 
-# ---------------------------
 # Initialize session state for key levels (load persistent data if available)
-# ---------------------------
 if "levels_data" not in st.session_state:
     st.session_state["levels_data"] = load_levels_from_file()
 
 # ---------------------------
 # Data & API Functions
 # ---------------------------
-# CoinPaprika IDs for various coins.
 coinpaprika_ids = {
     'Bitcoin (BTC)': 'btc-bitcoin',
     'Ethereum (ETH)': 'eth-ethereum',
@@ -66,7 +62,6 @@ coinpaprika_ids = {
     'Based Fartcoin (FARTCOIN)': 'fartcoin-based-fartcoin'
 }
 
-# Mapping for coin icons.
 icon_map = {
     "BTC": "bitcoin-btc-logo.png", "ETH": "ethereum-eth-logo.png",
     "XRP": "xrp-xrp-logo.png", "ADA": "cardano-ada-logo.png",
@@ -77,9 +72,6 @@ icon_map = {
 }
 
 def get_coin_data_from_paprika(name, vs_currency="USD"):
-    """
-    Fetches live price and percentage changes (24h, 7d, 30d) for the given coin.
-    """
     try:
         coin_id = coinpaprika_ids.get(name)
         if not coin_id:
@@ -98,10 +90,6 @@ def get_coin_data_from_paprika(name, vs_currency="USD"):
         return None, None, None, None
 
 def get_social_sentiment(coin):
-    """
-    Dummy function to simulate social sentiment analysis.
-    In production, integrate with a real service.
-    """
     sentiment_score = random.randint(-100, 100)
     if sentiment_score > 20:
         sentiment = "Positive"
@@ -115,31 +103,22 @@ def get_social_sentiment(coin):
 # Key Levels & Volume Strength Functions
 # ---------------------------
 def get_levels_for_asset(asset_name):
-    """
-    Retrieve or create the levels dictionary for a given asset.
-    """
     if asset_name not in st.session_state["levels_data"]:
         st.session_state["levels_data"][asset_name] = {
             "support": "",
             "demand": "",
             "resistance": "",
             "supply": "",
-            "choch": ""
+            "choch": "",
+            "chart_path": ""  # For storing chart image filename
         }
     return st.session_state["levels_data"][asset_name]
 
 def save_levels_for_asset(asset_name, levels):
-    """
-    Save the updated levels for the asset in session state and persist to file.
-    """
     st.session_state["levels_data"][asset_name] = levels
     save_levels_to_file(st.session_state["levels_data"])
 
 def calculate_volume_strength(vol_df, ma_period=14):
-    """
-    Calculate a volume strength score by comparing the latest volume to a 14-period MA.
-    Returns a score scaled from 0 to 10.
-    """
     vol_df = vol_df.copy()
     vol_df["VolumeMA"] = vol_df["Volume"].rolling(window=ma_period).mean()
     if len(vol_df) < ma_period:
@@ -162,7 +141,7 @@ def calculate_volume_strength(vol_df, ma_period=14):
 st.markdown("<h1 style='color:white;'>PnL & Risk Dashboard</h1>", unsafe_allow_html=True)
 
 # Create two columns:
-# LEFT COLUMN ("Orange Box"): Asset selection, market data, key levels & volume strength display.
+# LEFT COLUMN ("Orange Box"): Asset selection, market data, key levels, volume strength, and uploaded chart.
 # RIGHT COLUMN: Edit key levels, styled Plotly chart, and trade card preview.
 col1, col2 = st.columns([1, 2])
 
@@ -193,7 +172,7 @@ with col1:
     sentiment, sentiment_score = get_social_sentiment(asset_display)
     st.markdown(f"**Social Sentiment:** {sentiment} (Score: {sentiment_score})")
     
-    # Display Key Levels & Volume Strength ("White Box" in the orange area)
+    # Display Key Levels & Volume Strength
     st.markdown("### Key Levels & Volume Strength")
     levels = get_levels_for_asset(asset_display)
     st.markdown(f"**Support:** {levels['support'] or 'N/A'}")
@@ -201,6 +180,18 @@ with col1:
     st.markdown(f"**Resistance:** {levels['resistance'] or 'N/A'}")
     st.markdown(f"**Supply:** {levels['supply'] or 'N/A'}")
     st.markdown(f"**CHoCH:** {levels['choch'] or 'N/A'}")
+    
+    # Display uploaded chart (if exists) from the charts folder.
+    CHARTS_DIR = "charts"
+    chart_filename = levels.get("chart_path")
+    if chart_filename:
+        chart_path = os.path.join(CHARTS_DIR, chart_filename)
+        if os.path.exists(chart_path):
+            st.image(chart_path, caption=f"{asset_symbol} Chart Analysis", use_column_width=True)
+        else:
+            st.info("Chart file not found. Please upload again.")
+    else:
+        st.info("No chart uploaded yet for this asset.")
     
     # Dummy volume data (replace with actual volume data if available)
     vol_df = pd.DataFrame({
@@ -211,7 +202,7 @@ with col1:
     vol_score = calculate_volume_strength(vol_df)
     st.markdown(f"**Volume Strength Score:** {vol_score:.1f} / 10")
     
-    # New: 3-Day % Change Heatmap in a neutral color scheme
+    # 3-Day % Change Heatmap (neutral color scheme)
     st.markdown("### 3-Day % Change")
     df_3d = pd.DataFrame({
         "Symbol": ["BTC", "ETH", "ADA", "FARTCOIN", "SUI", "LINK", "ONDO", "CRV"],
@@ -240,28 +231,40 @@ with col1:
 
 # RIGHT COLUMN:
 with col2:
-    # Edit Key Levels Section
-    st.subheader("Edit Key Levels")
+    st.subheader("Edit Key Levels / Upload Chart")
     with st.expander("Modify Levels", expanded=False):
         new_support = st.text_input("Support", value=levels["support"])
         new_demand = st.text_input("Demand", value=levels["demand"])
         new_resistance = st.text_input("Resistance", value=levels["resistance"])
         new_supply = st.text_input("Supply", value=levels["supply"])
         new_choch = st.text_input("CHoCH", value=levels["choch"])
-        if st.button("Save Levels", key="save_levels"):
+        st.markdown("---")
+        st.markdown("#### Upload Chart Analysis")
+        uploaded_file = st.file_uploader("Upload your chart image (PNG/JPG)", type=["png", "jpg", "jpeg"])
+        if st.button("Save Levels & Chart", key="save_levels"):
             updated_levels = {
                 "support": new_support,
                 "demand": new_demand,
                 "resistance": new_resistance,
                 "supply": new_supply,
-                "choch": new_choch
+                "choch": new_choch,
+                "chart_path": levels.get("chart_path", "")  # default to current chart
             }
+            if uploaded_file is not None:
+                file_ext = os.path.splitext(uploaded_file.name)[1]
+                # Use asset symbol as the base name (or add a timestamp for versioning)
+                filename = f"{asset_symbol}{file_ext}"
+                file_path = os.path.join(CHARTS_DIR, filename)
+                with open(file_path, "wb") as f:
+                    f.write(uploaded_file.getvalue())
+                updated_levels["chart_path"] = filename
             save_levels_for_asset(asset_display, updated_levels)
-            st.success("Levels updated!")
+            st.success("Levels and chart updated!")
             st.experimental_rerun()
     
-    # Styled Plotly Chart (3-Day % Change Heatmap already shown on left column)
-    # Additional charts or info can be placed here.
+    # Styled Plotly Chart can remain here (or add additional charts)
+    st.subheader("Additional Charts")
+    # (You can add more charts here if needed.)
     
     # Collapsible Trade Card Preview
     with st.expander("Show Trade Card Preview", expanded=False):
