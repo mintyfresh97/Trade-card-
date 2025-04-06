@@ -11,6 +11,7 @@ import numpy as np
 import random
 import plotly.express as px
 from streamlit_autorefresh import st_autorefresh
+import shutil
 
 # Set page configuration as the very first Streamlit command.
 st.set_page_config(page_title="PnL & Risk Dashboard", layout="wide")
@@ -21,7 +22,7 @@ st.set_page_config(page_title="PnL & Risk Dashboard", layout="wide")
 st_autorefresh(interval=30000, limit=100, key="autorefresh")
 
 # ---------------------------
-# Persistence Functions for Key Levels
+# Persistence Functions for Key Levels and Chart Paths
 # ---------------------------
 PERSISTENCE_FILE = "levels_data.json"
 
@@ -41,7 +42,6 @@ def save_levels_to_file(levels_data):
     except Exception as e:
         st.error(f"Error saving levels file: {e}")
 
-# Initialize session state for key levels (load persistent data if available)
 if "levels_data" not in st.session_state:
     st.session_state["levels_data"] = load_levels_from_file()
 
@@ -110,7 +110,7 @@ def get_levels_for_asset(asset_name):
             "resistance": "",
             "supply": "",
             "choch": "",
-            "chart_path": ""  # For storing chart image filename
+            "chart_path": ""  # To store the filename of the uploaded chart image
         }
     return st.session_state["levels_data"][asset_name]
 
@@ -141,8 +141,8 @@ def calculate_volume_strength(vol_df, ma_period=14):
 st.markdown("<h1 style='color:white;'>PnL & Risk Dashboard</h1>", unsafe_allow_html=True)
 
 # Create two columns:
-# LEFT COLUMN ("Orange Box"): Asset selection, market data, key levels, volume strength, and uploaded chart.
-# RIGHT COLUMN: Edit key levels, styled Plotly chart, and trade card preview.
+# LEFT COLUMN ("Orange Box"): Displays asset selection, live data, key levels, volume strength, and the uploaded chart.
+# RIGHT COLUMN: Contains editing functionality (key levels and chart upload), additional charts, and trade card preview.
 col1, col2 = st.columns([1, 2])
 
 # LEFT COLUMN:
@@ -181,7 +181,7 @@ with col1:
     st.markdown(f"**Supply:** {levels['supply'] or 'N/A'}")
     st.markdown(f"**CHoCH:** {levels['choch'] or 'N/A'}")
     
-    # Display uploaded chart (if exists) from the charts folder.
+    # Display uploaded chart if available
     CHARTS_DIR = "charts"
     chart_filename = levels.get("chart_path")
     if chart_filename:
@@ -202,7 +202,7 @@ with col1:
     vol_score = calculate_volume_strength(vol_df)
     st.markdown(f"**Volume Strength Score:** {vol_score:.1f} / 10")
     
-    # 3-Day % Change Heatmap (neutral color scheme)
+    # 3-Day % Change Heatmap with neutral colors
     st.markdown("### 3-Day % Change")
     df_3d = pd.DataFrame({
         "Symbol": ["BTC", "ETH", "ADA", "FARTCOIN", "SUI", "LINK", "ONDO", "CRV"],
@@ -240,7 +240,7 @@ with col2:
         new_choch = st.text_input("CHoCH", value=levels["choch"])
         st.markdown("---")
         st.markdown("#### Upload Chart Analysis")
-        uploaded_file = st.file_uploader("Upload your chart image (PNG/JPG)", type=["png", "jpg", "jpeg"])
+        uploaded_file = st.file_uploader("Drag and drop your chart image (PNG/JPG)", type=["png", "jpg", "jpeg"])
         if st.button("Save Levels & Chart", key="save_levels"):
             updated_levels = {
                 "support": new_support,
@@ -248,12 +248,12 @@ with col2:
                 "resistance": new_resistance,
                 "supply": new_supply,
                 "choch": new_choch,
-                "chart_path": levels.get("chart_path", "")  # default to current chart
+                "chart_path": levels.get("chart_path", "")  # keep current chart if no new upload
             }
             if uploaded_file is not None:
                 file_ext = os.path.splitext(uploaded_file.name)[1]
-                # Use asset symbol as the base name (or add a timestamp for versioning)
-                filename = f"{asset_symbol}{file_ext}"
+                # Force filename to be the asset symbol with .png extension (you can change as desired)
+                filename = f"{asset_symbol}.png"
                 file_path = os.path.join(CHARTS_DIR, filename)
                 with open(file_path, "wb") as f:
                     f.write(uploaded_file.getvalue())
@@ -262,11 +262,9 @@ with col2:
             st.success("Levels and chart updated!")
             st.experimental_rerun()
     
-    # Styled Plotly Chart can remain here (or add additional charts)
     st.subheader("Additional Charts")
-    # (You can add more charts here if needed.)
+    # Additional charts or information can be added here.
     
-    # Collapsible Trade Card Preview
     with st.expander("Show Trade Card Preview", expanded=False):
         st.subheader("Trade Card")
         st.markdown(f"Asset: {asset_symbol}")
