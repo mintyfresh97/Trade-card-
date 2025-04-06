@@ -141,8 +141,8 @@ def calculate_volume_strength(vol_df, ma_period=14):
 st.markdown("<h1 style='color:white;'>PnL & Risk Dashboard</h1>", unsafe_allow_html=True)
 
 # Create two columns:
-# LEFT COLUMN ("Orange Box"): Displays asset selection, live data, key levels, volume strength, and the uploaded chart.
-# RIGHT COLUMN: Contains editing functionality (key levels and chart upload), additional charts, and trade card preview.
+# LEFT COLUMN ("Orange Box"): Displays asset selection, live data, key levels, volume strength, and uploaded chart.
+# RIGHT COLUMN: Contains editing functionality (key levels and chart upload), styled Plotly chart, and trade card preview.
 col1, col2 = st.columns([1, 2])
 
 # LEFT COLUMN:
@@ -187,7 +187,7 @@ with col1:
     if chart_filename:
         chart_path = os.path.join(CHARTS_DIR, chart_filename)
         if os.path.exists(chart_path):
-            st.image(chart_path, caption=f"{asset_symbol} Chart Analysis", use_column_width=True)
+            st.image(chart_path, caption=f"{asset_symbol} Chart Analysis", use_container_width=True)
         else:
             st.info("Chart file not found. Please upload again.")
     else:
@@ -202,37 +202,10 @@ with col1:
     vol_score = calculate_volume_strength(vol_df)
     st.markdown(f"**Volume Strength Score:** {vol_score:.1f} / 10")
     
-    # 3-Day % Change Heatmap with neutral colors
-    st.markdown("### 3-Day % Change")
-    df_3d = pd.DataFrame({
-        "Symbol": ["BTC", "ETH", "ADA", "FARTCOIN", "SUI", "LINK", "ONDO", "CRV"],
-        "Change (%)": [1.2, -0.8, 2.5, 4.2, 3.3, -1.0, -0.6, 0.9]
-    })
-    fig = px.bar(
-        df_3d,
-        x="Symbol",
-        y="Change (%)",
-        color="Change (%)",
-        color_continuous_scale=[(0, "red"), (0.5, "gray"), (1, "green")],
-        range_color=(-5, 5),
-        title="3-Day % Change Heatmap"
-    )
-    fig.update_layout(
-        template="plotly_white",
-        plot_bgcolor="rgba(0,0,0,0)",
-        paper_bgcolor="rgba(0,0,0,0)",
-        font_color="black",
-        xaxis=dict(showgrid=False),
-        yaxis=dict(showgrid=False),
-        title_x=0.5
-    )
-    fig.update_coloraxes(showscale=False)
-    st.plotly_chart(fig, use_container_width=True)
-
 # RIGHT COLUMN:
 with col2:
-    st.subheader("Edit Key Levels / Upload Chart")
-    with st.expander("Modify Levels", expanded=False):
+    st.subheader("Edit Key Levels / Upload Chart / Daily Analysis")
+    with st.expander("Modify Levels & Upload Chart", expanded=False):
         new_support = st.text_input("Support", value=levels["support"])
         new_demand = st.text_input("Demand", value=levels["demand"])
         new_resistance = st.text_input("Resistance", value=levels["resistance"])
@@ -248,11 +221,11 @@ with col2:
                 "resistance": new_resistance,
                 "supply": new_supply,
                 "choch": new_choch,
-                "chart_path": levels.get("chart_path", "")  # keep current chart if no new upload
+                "chart_path": levels.get("chart_path", "")
             }
             if uploaded_file is not None:
                 file_ext = os.path.splitext(uploaded_file.name)[1]
-                # Force filename to be the asset symbol with .png extension (you can change as desired)
+                # Force filename to be the asset symbol with .png extension
                 filename = f"{asset_symbol}.png"
                 file_path = os.path.join(CHARTS_DIR, filename)
                 with open(file_path, "wb") as f:
@@ -262,9 +235,25 @@ with col2:
             st.success("Levels and chart updated!")
             st.experimental_rerun()
     
-    st.subheader("Additional Charts")
-    # Additional charts or information can be added here.
+    # Display a styled Plotly chart with a heading like "Bitcoin Daily Analysis"
+    st.subheader(f"{asset_symbol} Daily Analysis")
+    # Here you can use your own data; for demonstration, we'll use dummy data.
+    df_daily = pd.DataFrame({
+        "Time": pd.date_range("2023-04-03", periods=10, freq="H"),
+        "Price": np.random.uniform(30000, 40000, 10)
+    })
+    # Create a line chart for daily price analysis
+    fig_daily = px.line(df_daily, x="Time", y="Price", title=f"{asset_symbol} Daily Analysis")
+    fig_daily.update_layout(
+        template="plotly_white",
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
+        font_color="black",
+        title_x=0.5
+    )
+    st.plotly_chart(fig_daily, use_container_width=True)
     
+    # Collapsible Trade Card Preview remains.
     with st.expander("Show Trade Card Preview", expanded=False):
         st.subheader("Trade Card")
         st.markdown(f"Asset: {asset_symbol}")
