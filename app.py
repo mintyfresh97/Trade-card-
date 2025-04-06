@@ -1,6 +1,7 @@
 import streamlit as st
 import requests
 import os
+import json
 from datetime import datetime, date
 from PIL import Image, ImageDraw, ImageFont
 import io
@@ -19,6 +20,33 @@ st.set_page_config(page_title="PnL & Risk Dashboard", layout="wide")
 # ---------------------------
 # Auto-refresh every 30 seconds (30,000 ms); up to 100 refreshes.
 st_autorefresh(interval=30000, limit=100, key="autorefresh")
+
+# ---------------------------
+# Persistence Functions for Key Levels
+# ---------------------------
+PERSISTENCE_FILE = "levels_data.json"
+
+def load_levels_from_file():
+    if os.path.exists(PERSISTENCE_FILE):
+        try:
+            with open(PERSISTENCE_FILE, "r") as f:
+                return json.load(f)
+        except Exception as e:
+            st.error(f"Error loading levels file: {e}")
+    return {}
+
+def save_levels_to_file(levels_data):
+    try:
+        with open(PERSISTENCE_FILE, "w") as f:
+            json.dump(levels_data, f)
+    except Exception as e:
+        st.error(f"Error saving levels file: {e}")
+
+# ---------------------------
+# Initialize session state for key levels (load persistent data if available)
+# ---------------------------
+if "levels_data" not in st.session_state:
+    st.session_state["levels_data"] = load_levels_from_file()
 
 # ---------------------------
 # Data & API Functions
@@ -86,10 +114,10 @@ def get_social_sentiment(coin):
 # ---------------------------
 # Key Levels & Volume Strength Functions
 # ---------------------------
-if "levels_data" not in st.session_state:
-    st.session_state["levels_data"] = {}
-
 def get_levels_for_asset(asset_name):
+    """
+    Retrieve or create the levels dictionary for a given asset.
+    """
     if asset_name not in st.session_state["levels_data"]:
         st.session_state["levels_data"][asset_name] = {
             "support": "",
@@ -101,7 +129,11 @@ def get_levels_for_asset(asset_name):
     return st.session_state["levels_data"][asset_name]
 
 def save_levels_for_asset(asset_name, levels):
+    """
+    Save the updated levels for the asset in session state and persist to file.
+    """
     st.session_state["levels_data"][asset_name] = levels
+    save_levels_to_file(st.session_state["levels_data"])
 
 def calculate_volume_strength(vol_df, ma_period=14):
     """
@@ -136,6 +168,7 @@ col1, col2 = st.columns([1, 2])
 
 # LEFT COLUMN:
 with col1:
+    # Asset selection
     display_names = list(coinpaprika_ids.keys())
     asset_display = st.selectbox("Select Asset", display_names)
     asset_symbol = asset_display.split("(")[-1].replace(")", "").strip()
@@ -145,6 +178,7 @@ with col1:
     else:
         st.warning("Icon not found")
     
+    # Market data & sentiment
     price, daily_change, weekly_change, monthly_change = get_coin_data_from_paprika(asset_display)
     if price is not None:
         st.markdown(f"**Live Price:** ${price}")
@@ -159,6 +193,7 @@ with col1:
     sentiment, sentiment_score = get_social_sentiment(asset_display)
     st.markdown(f"**Social Sentiment:** {sentiment} (Score: {sentiment_score})")
     
+    # Display Key Levels & Volume Strength ("White Box" in the orange area)
     st.markdown("### Key Levels & Volume Strength")
     levels = get_levels_for_asset(asset_display)
     st.markdown(f"**Support:** {levels['support'] or 'N/A'}")
@@ -167,7 +202,7 @@ with col1:
     st.markdown(f"**Supply:** {levels['supply'] or 'N/A'}")
     st.markdown(f"**CHoCH:** {levels['choch'] or 'N/A'}")
     
-    # Dummy volume data (replace with your own if available)
+    # Dummy volume data (replace with actual volume data if available)
     vol_df = pd.DataFrame({
         "Date": pd.date_range("2023-01-01", periods=30, freq="D"),
         "Volume": np.random.randint(1000, 5000, 30)
@@ -176,9 +211,8 @@ with col1:
     vol_score = calculate_volume_strength(vol_df)
     st.markdown(f"**Volume Strength Score:** {vol_score:.1f} / 10")
     
-    # New: Show a 3-Day % Change (instead of 24h) in a neutral color scheme.
+    # New: 3-Day % Change Heatmap in a neutral color scheme
     st.markdown("### 3-Day % Change")
-    # Dummy data for 3-day changes.
     df_3d = pd.DataFrame({
         "Symbol": ["BTC", "ETH", "ADA", "FARTCOIN", "SUI", "LINK", "ONDO", "CRV"],
         "Change (%)": [1.2, -0.8, 2.5, 4.2, 3.3, -1.0, -0.6, 0.9]
@@ -201,13 +235,12 @@ with col1:
         yaxis=dict(showgrid=False),
         title_x=0.5
     )
-    # Optionally show the color scale legend if desired:
     fig.update_coloraxes(showscale=False)
     st.plotly_chart(fig, use_container_width=True)
 
 # RIGHT COLUMN:
 with col2:
-    # Edit Key Levels Section remains here.
+    # Edit Key Levels Section
     st.subheader("Edit Key Levels")
     with st.expander("Modify Levels", expanded=False):
         new_support = st.text_input("Support", value=levels["support"])
@@ -225,11 +258,12 @@ with col2:
             }
             save_levels_for_asset(asset_display, updated_levels)
             st.success("Levels updated!")
+            st.experimental_rerun()
     
-    # Styled Plotly Chart: 3-Day % Change Heatmap already shown on left column.
-    # (We can add additional charts or analysis here if desired.)
+    # Styled Plotly Chart (3-Day % Change Heatmap already shown on left column)
+    # Additional charts or info can be placed here.
     
-    # Collapsible Trade Card Preview remains.
+    # Collapsible Trade Card Preview
     with st.expander("Show Trade Card Preview", expanded=False):
         st.subheader("Trade Card")
         st.markdown(f"Asset: {asset_symbol}")
