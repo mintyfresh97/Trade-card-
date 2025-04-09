@@ -181,52 +181,45 @@ if app_mode == "Trade Journal & Checklist":
     # Display the daily checklist on the sidebar
     show_checklist()
     
-    # ---------------------------
-    # Replay Journal Viewer with Screenshot Auto-Matching + Calendar Heatmap
-    # ---------------------------
-    with st.sidebar.expander("📊 Replay Trade Journal", expanded=False):
-        log_path = "trade_log.csv"
-        if os.path.exists(log_path):
-            df_log = pd.read_csv(log_path)
-            df_log['Date'] = pd.to_datetime(df_log['Date'], errors='coerce')
-            st.markdown("### 📅 Trade Frequency Heatmap")
-            df_log['Count'] = 1
-            df_daily = df_log.groupby(df_log['Date'].dt.date).agg({'Count': 'sum'}).reset_index()
-            fig = px.density_heatmap(df_daily, x="Date", y=["Trades"] * len(df_daily), z="Count",
-                                     color_continuous_scale="Blues")
-            fig.update_layout(height=150, yaxis_title=None, xaxis_title=None,
-                              coloraxis_showscale=False, margin=dict(t=0, b=0, l=0, r=0))
-            st.plotly_chart(fig, use_container_width=True)
-            
-            selected_day = st.date_input("Select Day to Review", value=datetime.now().date())
-            df_day = df_log[df_log['Date'] == pd.to_datetime(selected_day)]
-            if not df_day.empty:
-                for idx, row in df_day.iterrows():
-                    with st.expander(f"{row['Date'].date()} - {row['Asset']} ({row['Outcome']})"):
-                        st.markdown(f"**Strategy:** {row['Strategy']}")
-                        st.markdown(f"**RR Ratio:** {row['RR Ratio']}")
-                        st.markdown(f"**Notes:** {row['Notes']}")
-                        # Auto-match chart screenshot from journal folder
-                        base_asset = row['Asset'].split()[0].upper()
-                        chart_name = f"{base_asset}_{row['Date'].date()}.png"
-                        image_path = os.path.join(JOURNAL_CHART_DIR, chart_name)
-                        if os.path.exists(image_path):
-                            st.image(image_path, caption="Attached Chart Screenshot")
-            else:
-                st.info("No trades found on that date.")
-        else:
-            st.info("No trade log found.")
+    # Move the date filter (for selecting trades to view) to the sidebar but NOT inside an expander.
+    selected_day = st.sidebar.date_input("Select Day to Review", value=datetime.now().date())
     
-    # ---------------------------
-    # Journal Chart Upload
-    # ---------------------------
+    # Display the trade log in the main area.
+    log_path = "trade_log.csv"
+    if os.path.exists(log_path):
+        df_log = pd.read_csv(log_path)
+        df_log['Date'] = pd.to_datetime(df_log['Date'], errors='coerce')
+        # Optionally, you can add a heatmap or summary here if desired.
+        
+        # Filter trade log by the selected day
+        df_day = df_log[df_log['Date'] == pd.to_datetime(selected_day)]
+        if not df_day.empty:
+            for idx, row in df_day.iterrows():
+                expander_label = f"{row['Date'].date()} - {row['Asset']} ({row['Outcome']})"
+                with st.expander(expander_label):
+                    st.markdown(f"**Strategy:** {row['Strategy']}")
+                    st.markdown(f"**RR Ratio:** {row['RR Ratio']}")
+                    st.markdown(f"**Notes:** {row['Notes']}")
+                    # Auto-match chart screenshot from the journal folder.
+                    base_asset = row['Asset'].split()[0].upper()
+                    chart_name = f"{base_asset}_{row['Date'].date()}.png"
+                    image_path = os.path.join(JOURNAL_CHART_DIR, chart_name)
+                    if os.path.exists(image_path):
+                        st.image(image_path, caption="Attached Chart Screenshot")
+        else:
+            st.info("No trades found on that date.")
+    else:
+        st.info("No trade log found.")
+    
+    # Journal Chart Upload: remains in the sidebar (within its own expander)
     with st.sidebar.expander("📥 Upload Chart to Log Entry", expanded=False):
         st.markdown("Upload your chart screenshot to auto-attach to a journal entry.")
-        asset_for_upload = st.text_input("Asset Name (e.g. BTC)")
+        asset_for_upload = st.text_input("Asset Name (e.g. BTC)", key="upload_asset")
         upload_date = st.date_input("Date of Trade", value=datetime.now().date(), key="upload_date_journal")
         chart_file = st.file_uploader("Chart Image (PNG or JPG)", type=["png", "jpg", "jpeg"], key="journal_chart")
         if chart_file and asset_for_upload:
             asset_clean = asset_for_upload.strip().upper()
+            # Save the file as, for example: BTC_2025-04-09.png
             chart_path = os.path.join(JOURNAL_CHART_DIR, f"{asset_clean}_{upload_date}.png")
             with open(chart_path, "wb") as f:
                 f.write(chart_file.read())
@@ -315,7 +308,6 @@ elif app_mode == "PnL & Risk Dashboard":
                     "chart_path": levels.get("chart_path", "")
                 }
                 if uploaded_file is not None:
-                    # Save the uploaded file with the asset symbol as filename.
                     file_ext = os.path.splitext(uploaded_file.name)[1]
                     filename = f"{asset_symbol}.png"
                     file_path = os.path.join(CHARTS_DIR, filename)
