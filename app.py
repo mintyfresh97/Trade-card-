@@ -5,6 +5,7 @@ import json
 import io
 import textwrap
 import random
+import sqlite3  # New import for SQLite
 from datetime import datetime, date
 from PIL import Image, ImageDraw, ImageFont
 import pandas as pd
@@ -28,32 +29,28 @@ if not os.path.exists(CHARTS_DIR):
     os.makedirs(CHARTS_DIR)
 
 # ---------------------------------------------------
-# Persistence Functions for Key Levels (Used in PnL Dashboard)
+# SQLite Persistence Setup
 # ---------------------------------------------------
-PERSISTENCE_FILE = "levels_data.json"
+# Connect to (or create) the SQLite database file at the repo root.
+conn = sqlite3.connect("levels_data.db", check_same_thread=False)
+cursor = conn.cursor()
 
-def load_levels_from_file():
-    if os.path.exists(PERSISTENCE_FILE):
-        try:
-            with open(PERSISTENCE_FILE, "r") as f:
-                return json.load(f)
-        except Exception as e:
-            st.error(f"Error loading levels file: {e}")
-    return {}
+# Create the asset_levels table if it doesn't exist.
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS asset_levels (
+    asset TEXT PRIMARY KEY,
+    support TEXT,
+    demand TEXT,
+    resistance TEXT,
+    supply TEXT,
+    choch TEXT,
+    chart_path TEXT
+)
+""")
+conn.commit()
 
-def save_levels_to_file(levels_data):
-    try:
-        with open(PERSISTENCE_FILE, "w") as f:
-            json.dump(levels_data, f)
-    except Exception as e:
-        st.error(f"Error saving levels file: {e}")
-
-if "levels_data" not in st.session_state:
-    st.session_state["levels_data"] = load_levels_from_file()
-
-# ---------------------------------------------------
-# Functions for the PnL & Risk Dashboard
-# ---------------------------------------------------
+# Optional: Pre-populate the table with assets from your coinpaprika_ids dictionary.
+# (This ensures every asset has a row in the DB.)
 coinpaprika_ids = {
     'Bitcoin (BTC)': 'btc-bitcoin',
     'Ethereum (ETH)': 'eth-ethereum',
@@ -68,6 +65,62 @@ coinpaprika_ids = {
     'Based Fartcoin (FARTCOIN)': 'fartcoin-based-fartcoin'
 }
 
+for asset in coinpaprika_ids.keys():
+    cursor.execute("""
+        INSERT OR IGNORE INTO asset_levels (asset, support, demand, resistance, supply, choch, chart_path)
+        VALUES (?, '', '', '', '', '', '')
+    """, (asset,))
+conn.commit()
+
+def get_levels_from_db(asset_name):
+    cursor.execute("SELECT support, demand, resistance, supply, choch, chart_path FROM asset_levels WHERE asset = ?", (asset_name,))
+    row = cursor.fetchone()
+    if row:
+        return {
+            "support": row[0] or "",
+            "demand": row[1] or "",
+            "resistance": row[2] or "",
+            "supply": row[3] or "",
+            "choch": row[4] or "",
+            "chart_path": row[5] or ""
+        }
+    else:
+        return {"support": "", "demand": "", "resistance": "", "supply": "", "choch": "", "chart_path": ""}
+
+def save_levels_to_db(asset_name, levels):
+    cursor.execute("""
+        INSERT INTO asset_levels (asset, support, demand, resistance, supply, choch, chart_path)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(asset) DO UPDATE SET
+            support = excluded.support,
+            demand = excluded.demand,
+            resistance = excluded.resistance,
+            supply = excluded.supply,
+            choch = excluded.choch,
+            chart_path = excluded.chart_path
+    """, (
+        asset_name,
+        levels.get("support", ""),
+        levels.get("demand", ""),
+        levels.get("resistance", ""),
+        levels.get("supply", ""),
+        levels.get("choch", ""),
+        levels.get("chart_path", "")
+    ))
+    conn.commit()
+
+def get_levels_for_asset(asset_name):
+    levels = get_levels_from_db(asset_name)
+    st.session_state.setdefault("levels_data", {})[asset_name] = levels
+    return levels
+
+def save_levels_for_asset(asset_name, levels):
+    st.session_state.setdefault("levels_data", {})[asset_name] = levels
+    save_levels_to_db(asset_name, levels)
+
+# ---------------------------------------------------
+# Functions for the PnL & Risk Dashboard (Same as Before)
+# ---------------------------------------------------
 icon_map = {
     "BTC": "bitcoin-btc-logo.png", "ETH": "ethereum-eth-logo.png",
     "XRP": "xrp-xrp-logo.png", "ADA": "cardano-ada-logo.png",
@@ -104,39 +157,6 @@ def get_social_sentiment(coin):
     else:
         sentiment = "Neutral"
     return sentiment, sentiment_score
-
-def get_levels_for_asset(asset_name):
-    if asset_name not in st.session_state["levels_data"]:
-        st.session_state["levels_data"][asset_name] = {
-            "support": "",
-            "demand": "",
-            "resistance": "",
-            "supply": "",
-            "choch": "",
-            "chart_path": ""  # store the filename of the uploaded chart image
-        }
-    return st.session_state["levels_data"][asset_name]
-
-def save_levels_for_asset(asset_name, levels):
-    st.session_state["levels_data"][asset_name] = levels
-    save_levels_to_file(st.session_state["levels_data"])
-
-def calculate_volume_strength(vol_df, ma_period=14):
-    vol_df = vol_df.copy()
-    vol_df["VolumeMA"] = vol_df["Volume"].rolling(window=ma_period).mean()
-    if len(vol_df) < ma_period:
-        return 0.0
-    last_vol = vol_df["Volume"].iloc[-1]
-    last_ma = vol_df["VolumeMA"].iloc[-1]
-    if pd.isna(last_ma):
-        return 0.0
-    ratio = last_vol / last_ma
-    if ratio < 0.5:
-        return 0.0
-    elif ratio > 2.0:
-        return 10.0
-    else:
-        return (ratio - 0.5) / (2.0 - 0.5) * 10.0
 
 # ---------------------------------------------------
 # Functions for the Trade Journal & Checklist (from File 1)
@@ -181,16 +201,14 @@ if app_mode == "Trade Journal & Checklist":
     # Display the daily checklist on the sidebar
     show_checklist()
     
-    # Move the date filter (for selecting trades to view) to the sidebar but NOT inside an expander.
+    # Sidebar date input for filtering trade log entries
     selected_day = st.sidebar.date_input("Select Day to Review", value=datetime.now().date())
     
-    # Display the trade log in the main area.
+    # Display the trade log in the main area
     log_path = "trade_log.csv"
     if os.path.exists(log_path):
         df_log = pd.read_csv(log_path)
         df_log['Date'] = pd.to_datetime(df_log['Date'], errors='coerce')
-        # Optionally, you can add a heatmap or summary here if desired.
-        
         # Filter trade log by the selected day
         df_day = df_log[df_log['Date'] == pd.to_datetime(selected_day)]
         if not df_day.empty:
@@ -200,7 +218,7 @@ if app_mode == "Trade Journal & Checklist":
                     st.markdown(f"**Strategy:** {row['Strategy']}")
                     st.markdown(f"**RR Ratio:** {row['RR Ratio']}")
                     st.markdown(f"**Notes:** {row['Notes']}")
-                    # Auto-match chart screenshot from the journal folder.
+                    # Auto-match chart screenshot from journal folder.
                     base_asset = row['Asset'].split()[0].upper()
                     chart_name = f"{base_asset}_{row['Date'].date()}.png"
                     image_path = os.path.join(JOURNAL_CHART_DIR, chart_name)
@@ -211,7 +229,7 @@ if app_mode == "Trade Journal & Checklist":
     else:
         st.info("No trade log found.")
     
-    # Journal Chart Upload: remains in the sidebar (within its own expander)
+    # Journal Chart Upload in sidebar
     with st.sidebar.expander("📥 Upload Chart to Log Entry", expanded=False):
         st.markdown("Upload your chart screenshot to auto-attach to a journal entry.")
         asset_for_upload = st.text_input("Asset Name (e.g. BTC)", key="upload_asset")
@@ -219,7 +237,6 @@ if app_mode == "Trade Journal & Checklist":
         chart_file = st.file_uploader("Chart Image (PNG or JPG)", type=["png", "jpg", "jpeg"], key="journal_chart")
         if chart_file and asset_for_upload:
             asset_clean = asset_for_upload.strip().upper()
-            # Save the file as, for example: BTC_2025-04-09.png
             chart_path = os.path.join(JOURNAL_CHART_DIR, f"{asset_clean}_{upload_date}.png")
             with open(chart_path, "wb") as f:
                 f.write(chart_file.read())
@@ -231,21 +248,18 @@ if app_mode == "Trade Journal & Checklist":
 elif app_mode == "PnL & Risk Dashboard":
     st.title("PnL & Risk Dashboard")
     
-    # ---------------------------
     # Real-Time Data Auto-Refresh (Every 30 seconds)
-    # ---------------------------
     st_autorefresh(interval=30000, limit=100, key="autorefresh")
     
-    # Layout: left column for asset info and key levels; right column for editing and trade card
+    # Layout: Left column for asset info and key levels; right column for editing and trade card preview.
     col1, col2 = st.columns([1, 2])
     
-    # --- LEFT COLUMN: Asset Selection, Live Data, Key Levels & Volume Strength ---
     with col1:
         display_names = list(coinpaprika_ids.keys())
         asset_display = st.selectbox("Select Asset", display_names)
         asset_symbol = asset_display.split("(")[-1].replace(")", "").strip()
         
-        # Display asset icon if available.
+        # Asset Icon
         icon_path = f"assets/{icon_map.get(asset_symbol, '')}"
         if os.path.exists(icon_path):
             st.image(icon_path, width=32)
@@ -267,7 +281,7 @@ elif app_mode == "PnL & Risk Dashboard":
         sentiment, sentiment_score = get_social_sentiment(asset_display)
         st.markdown(f"**Social Sentiment:** {sentiment} (Score: {sentiment_score})")
         
-        # Display key levels from persistence.
+        # Display persistent key levels from the database.
         levels = get_levels_for_asset(asset_display)
         st.markdown("### Key Levels & Volume Strength")
         st.markdown(f"**Support:** {levels['support'] or 'N/A'}")
@@ -276,16 +290,27 @@ elif app_mode == "PnL & Risk Dashboard":
         st.markdown(f"**Supply:** {levels['supply'] or 'N/A'}")
         st.markdown(f"**CHoCH:** {levels['choch'] or 'N/A'}")
         
-        # Calculate and display a volume strength score.
+        # Volume strength calculation.
         vol_df = pd.DataFrame({
             "Date": pd.date_range("2023-01-01", periods=30, freq="D"),
             "Volume": np.random.randint(1000, 5000, 30)
         })
         vol_df.sort_values("Date", inplace=True)
-        vol_score = calculate_volume_strength(vol_df)
+        vol_score = 0.0
+        if len(vol_df) >= 14:
+            vol_df["VolumeMA"] = vol_df["Volume"].rolling(window=14).mean()
+            last_vol = vol_df["Volume"].iloc[-1]
+            last_ma = vol_df["VolumeMA"].iloc[-1]
+            if pd.notna(last_ma):
+                ratio = last_vol / last_ma
+                if ratio < 0.5:
+                    vol_score = 0.0
+                elif ratio > 2.0:
+                    vol_score = 10.0
+                else:
+                    vol_score = (ratio - 0.5) / (2.0 - 0.5) * 10.0
         st.markdown(f"**Volume Strength Score:** {vol_score:.1f} / 10")
     
-    # --- RIGHT COLUMN: Edit Key Levels, Chart Upload & Trade Card Preview ---
     with col2:
         st.subheader("Edit Key Levels / Upload Chart")
         with st.expander("Modify Levels & Chart", expanded=False):
@@ -320,7 +345,6 @@ elif app_mode == "PnL & Risk Dashboard":
                 st.experimental_rerun()
         
         st.subheader(f"{asset_symbol} Daily Analysis")
-        # Display the chart image if uploaded.
         chart_filename = levels.get("chart_path", "")
         if chart_filename:
             chart_path = os.path.join(CHARTS_DIR, chart_filename)
@@ -331,9 +355,6 @@ elif app_mode == "PnL & Risk Dashboard":
         else:
             st.info("No chart uploaded yet for this asset.")
         
-        # ---------------------------
-        # Collapsible Trade Card Preview
-        # ---------------------------
         with st.expander("Show Trade Card Preview", expanded=False):
             st.subheader("Trade Card")
             if price is not None:
@@ -458,9 +479,6 @@ elif app_mode == "PnL & Risk Dashboard":
                     mime="image/png"
                 )
     
-    # ---------------------------
-    # Trade Log & Advanced Analytics
-    # ---------------------------
     st.markdown("---")
     st.header("Strategy Tracker")
     track_col1, track_col2 = st.columns(2)
