@@ -115,7 +115,7 @@ def save_levels_for_asset(asset_name, levels):
     save_levels_to_db(asset_name, levels)
 
 # ---------------------------------------------------
-# Other Shared Functions & Assets
+# Shared Functions & Assets
 # ---------------------------------------------------
 icon_map = {
     "BTC": "bitcoin-btc-logo.png", "ETH": "ethereum-eth-logo.png",
@@ -154,9 +154,42 @@ def get_social_sentiment(coin):
         sentiment = "Neutral"
     return sentiment, sentiment_score
 
-def show_checklist():
-    with st.sidebar.expander("📋 Daily Trade Checklist", expanded=False):
-        st.markdown("### 3-Point Psychology Checklist")
+# ---------------------------------------------------
+# Application Navigation
+# ---------------------------------------------------
+app_mode = st.sidebar.radio("Select App Mode", 
+    ["Trade Journal & Checklist", "PnL & Risk Dashboard", "Mindset Dashboard"])
+
+# ====================================================
+# Trade Journal & Checklist Mode (Dark Mode, Two-Column Layout)
+# ====================================================
+if app_mode == "Trade Journal & Checklist":
+    # Inject dark mode CSS for this mode
+    st.markdown(
+        """
+        <style>
+        .reportview-container, .main, .block-container {
+            background-color: #111;
+            color: #fff;
+        }
+        .sidebar .sidebar-content {
+            background-color: #222;
+            color: #fff;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+    
+    st.title("🧾 Trade Journal & Checklist")
+    st.caption("Daily pre-trade mindset and setup check")
+
+    # Create a two-column layout similar to Mindset Dashboard
+    col1, col2 = st.columns(2)
+    
+    # --- Column 1: Checklist & Grading ---
+    with col1:
+        st.subheader("🔍 3-Point Psychology Checklist")
         p1 = st.checkbox("✅ Do I have a clear plan (entry, SL, TP)?")
         p2 = st.checkbox("✅ Am I trading structure, not emotion?")
         p3 = st.checkbox("✅ Am I okay missing today if no setup?")
@@ -165,7 +198,7 @@ def show_checklist():
         else:
             st.warning("Mindset: Shaky. Re-check before entering.")
         st.markdown("---")
-        st.markdown("### Trade Setup Grading (Out of 10)")
+        st.subheader("Trade Setup Grading (Out of 10)")
         s1 = st.slider("Structure Break Clear?", 0, 2, 0)
         s2 = st.slider("Return to Key Zone?", 0, 2, 0)
         s3 = st.slider("Entry Signal Quality", 0, 2, 0)
@@ -174,55 +207,40 @@ def show_checklist():
         s6 = st.slider("Correlation Confirms Bias", 0, 1, 0)
         s7 = st.slider("Used Journal or Checklist", 0, 1, 0)
         total_score = s1 + s2 + s3 + s4 + s5 + s6 + s7
-        st.markdown(f"**Setup Score:** {total_score} / 10")
+        st.write(f"**Setup Score:** {total_score} / 10")
         if total_score >= 7:
             st.success("TRADE VALID ✅")
         else:
             st.error("NO TRADE ❌ - Wait for better setup")
-
-# ---------------------------------------------------
-# Application Navigation
-# ---------------------------------------------------
-app_mode = st.sidebar.radio("Select App Mode", 
-    ["Trade Journal & Checklist", "PnL & Risk Dashboard", "Mindset Dashboard"])
-
-# ====================================================
-# Trade Journal & Checklist Mode
-# ====================================================
-if app_mode == "Trade Journal & Checklist":
-    st.title("Trade Journal & Checklist")
     
-    # Display checklist in sidebar
-    show_checklist()
-    
-    # Sidebar: Date input for filtering trade log entries
-    selected_day = st.sidebar.date_input("Select Day to Review", value=datetime.now().date())
-    
-    log_path = "trade_log.csv"
-    if os.path.exists(log_path):
-        df_log = pd.read_csv(log_path)
-        df_log['Date'] = pd.to_datetime(df_log['Date'], errors='coerce')
-        df_day = df_log[df_log['Date'] == pd.to_datetime(selected_day)]
-        if not df_day.empty:
-            for idx, row in df_day.iterrows():
-                expander_label = f"{row['Date'].date()} - {row['Asset']} ({row['Outcome']})"
-                with st.expander(expander_label):
-                    st.markdown(f"**Strategy:** {row['Strategy']}")
-                    st.markdown(f"**RR Ratio:** {row['RR Ratio']}")
-                    st.markdown(f"**Notes:** {row['Notes']}")
-                    base_asset = row['Asset'].split()[0].upper()
-                    chart_name = f"{base_asset}_{row['Date'].date()}.png"
-                    image_path = os.path.join(JOURNAL_CHART_DIR, chart_name)
-                    if os.path.exists(image_path):
-                        st.image(image_path, caption="Attached Chart Screenshot")
+    # --- Column 2: Journal Replay & Chart Upload ---
+    with col2:
+        st.subheader("📅 Replay Journal Viewer")
+        selected_day = st.date_input("Select Day to Review", value=datetime.now().date())
+        log_path = "trade_log.csv"
+        if os.path.exists(log_path):
+            df_log = pd.read_csv(log_path)
+            df_log['Date'] = pd.to_datetime(df_log['Date'], errors='coerce')
+            df_day = df_log[df_log['Date'] == pd.to_datetime(selected_day)]
+            if not df_day.empty:
+                for idx, row in df_day.iterrows():
+                    expander_label = f"{row['Date'].date()} - {row['Asset']} ({row['Outcome']})"
+                    with st.expander(expander_label):
+                        st.markdown(f"**Strategy:** {row['Strategy']}")
+                        st.markdown(f"**RR Ratio:** {row['RR Ratio']}")
+                        st.markdown(f"**Notes:** {row['Notes']}")
+                        base_asset = row['Asset'].split()[0].upper()
+                        chart_name = f"{base_asset}_{row['Date'].date()}.png"
+                        image_path = os.path.join(JOURNAL_CHART_DIR, chart_name)
+                        if os.path.exists(image_path):
+                            st.image(image_path, caption="Attached Chart Screenshot")
+            else:
+                st.info("No trades found on that date.")
         else:
-            st.info("No trades found on that date.")
-    else:
-        st.info("No trade log found.")
+            st.info("No trade log found.")
     
-    with st.sidebar.expander("📥 Upload Chart to Log Entry", expanded=False):
-        st.markdown("Upload your chart screenshot to auto-attach to a journal entry.")
-        asset_for_upload = st.text_input("Asset Name (e.g. BTC)", key="upload_asset")
+        st.subheader("📥 Upload Chart to Log Entry")
+        asset_for_upload = st.text_input("Asset Name (e.g. BTC)", key="upload_asset_journal")
         upload_date = st.date_input("Date of Trade", value=datetime.now().date(), key="upload_date_journal")
         chart_file = st.file_uploader("Chart Image (PNG or JPG)", type=["png", "jpg", "jpeg"], key="journal_chart")
         if chart_file and asset_for_upload:
@@ -237,7 +255,6 @@ if app_mode == "Trade Journal & Checklist":
 # ====================================================
 elif app_mode == "PnL & Risk Dashboard":
     st.title("PnL & Risk Dashboard")
-    
     st_autorefresh(interval=30000, limit=100, key="autorefresh")
     
     col1, col2 = st.columns([1, 2])
@@ -245,23 +262,23 @@ elif app_mode == "PnL & Risk Dashboard":
         display_names = list(coinpaprika_ids.keys())
         asset_display = st.selectbox("Select Asset", display_names)
         asset_symbol = asset_display.split("(")[-1].replace(")", "").strip()
-        
         icon_path = f"assets/{icon_map.get(asset_symbol, '')}"
         if os.path.exists(icon_path):
             st.image(icon_path, width=32)
         else:
             st.warning("Icon not found")
-        
         price, daily_change, weekly_change, monthly_change = get_coin_data_from_paprika(asset_display)
         if price is not None:
             st.markdown(f"**Live Price:** ${price}")
-            st.markdown(f"**Daily (24h):** {daily_change}%  \n**Weekly (7d):** {weekly_change}%  \n**Monthly (30d):** {monthly_change}%")
+            st.markdown(
+                f"**Daily (24h):** {daily_change}%  \n"
+                f"**Weekly (7d):** {weekly_change}%  \n"
+                f"**Monthly (30d):** {monthly_change}%"
+            )
         else:
             st.markdown("No market data available.")
-        
         sentiment, sentiment_score = get_social_sentiment(asset_display)
         st.markdown(f"**Social Sentiment:** {sentiment} (Score: {sentiment_score})")
-        
         levels = get_levels_for_asset(asset_display)
         st.markdown("### Key Levels & Volume Strength")
         st.markdown(f"**Support:** {levels['support'] or 'N/A'}")
@@ -524,7 +541,6 @@ elif app_mode == "PnL & Risk Dashboard":
 # Mindset Dashboard Mode (Dark Mode)
 # ====================================================
 elif app_mode == "Mindset Dashboard":
-    # Inject custom CSS for dark mode specific to this section.
     st.markdown(
         """
         <style>
@@ -552,7 +568,6 @@ elif app_mode == "Mindset Dashboard":
         emotional_state = st.slider("Emotional State", 0, 10, 5, help="0 = Calm, 10 = Anxious")
         focus_level = st.slider("Focus Level", 0, 10, 5, help="0 = Distracted, 10 = Fully Focused")
         confidence = st.slider("Confidence", 0, 10, 5, help="0 = Doubtful, 10 = Highly Confident")
-        
         st.markdown("### ✅ Pre-Trade Checklist")
         checklist = []
         if st.checkbox("I’ve accepted the risk"):
@@ -565,7 +580,6 @@ elif app_mode == "Mindset Dashboard":
             checklist.append("Defined setup")
         if st.checkbox("I will execute without fear"):
             checklist.append("Execute confidently")
-            
         if st.button("📌 Log Mindset"):
             new_row = {
                 "Timestamp": datetime.now(),
@@ -604,14 +618,12 @@ elif app_mode == "Mindset Dashboard":
         st.markdown(f"> *{st.session_state.affirmation}*")
         if st.button("🔁 Shuffle"):
             st.session_state.affirmation = random.choice(affirmations)
-        
         st.markdown("### 🧾 Post-Trade Reflection")
         followed_plan = st.radio("Did you follow your plan?", ["Yes", "No"])
         impact = st.selectbox("What affected your decision?", [
             "None", "Fear", "Overconfidence", "FOMO", "Impatience", "External Distraction"
         ])
         reflection = st.text_area("Notes or lessons learned")
-        
         if st.button("📝 Save Reflection"):
             csv_file = "mindset_log.csv"
             if not os.path.exists(csv_file):
@@ -635,4 +647,3 @@ elif app_mode == "Mindset Dashboard":
         st.dataframe(log_df.tail(5))
     else:
         st.info("No logs found yet.")
-
