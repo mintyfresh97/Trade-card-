@@ -21,6 +21,7 @@ st.set_page_config(page_title="Trade Journal & PnL Dashboard", layout="wide")
 JOURNAL_CHART_DIR = "journal_charts"
 if not os.path.exists(JOURNAL_CHART_DIR):
     os.makedirs(JOURNAL_CHART_DIR)
+
 CHARTS_DIR = "charts"
 if not os.path.exists(CHARTS_DIR):
     os.makedirs(CHARTS_DIR)
@@ -152,7 +153,7 @@ def get_social_sentiment(coin):
     return sentiment, sentiment_score
 
 # ---------------------------------------------------
-# Trade Journal & Checklist Mode (Dark Mode, 2-Column Layout)
+# 1) Trade Journal & Checklist Mode (Dark Mode, 2-Column Layout)
 # ---------------------------------------------------
 def trade_journal_mode():
     st.markdown(
@@ -233,12 +234,38 @@ def trade_journal_mode():
             st.success("Chart uploaded and auto-linked to journal entry.")
 
 # ---------------------------------------------------
-# Asset Data Mode (Formerly PnL & Risk Dashboard, without Trade Card Preview)
+# 2) Asset Data Mode (Refined Look with Stylish Banner)
 # ---------------------------------------------------
 def asset_data_mode():
-    st.title("Asset Data")
+    # Stylish banner for Asset Data page
+    st.markdown("""
+    <style>
+    .asset-data-banner {
+        background: linear-gradient(to right, #2c2c2c, #3d3d3d);
+        padding: 1rem 2rem;
+        border-radius: 0.5rem;
+        margin-bottom: 1rem;
+    }
+    .asset-data-banner h1 {
+        color: #FFD700;
+        font-size: 2.3rem;
+        text-align: center;
+        margin: 0;
+    }
+    .asset-data-banner p {
+        color: #ccc;
+        text-align: center;
+        margin: 0.5rem 0 0;
+        font-size: 1.05rem;
+    }
+    </style>
+    <div class="asset-data-banner">
+        <h1>Asset Data</h1>
+        <p>Monitor real-time market info and manage key levels</p>
+    </div>
+    """, unsafe_allow_html=True)
+
     st_autorefresh(interval=30000, limit=100, key="autorefresh")
-    
     col1, col2 = st.columns([1, 2])
     with col1:
         display_names = list(coinpaprika_ids.keys())
@@ -252,11 +279,7 @@ def asset_data_mode():
         price, daily_change, weekly_change, monthly_change = get_coin_data_from_paprika(asset_display)
         if price is not None:
             st.markdown(f"**Live Price:** ${price}")
-            st.markdown(
-                f"**Daily (24h):** {daily_change}%  \n"
-                f"**Weekly (7d):** {weekly_change}%  \n"
-                f"**Monthly (30d):** {monthly_change}%"
-            )
+            st.markdown(f"**Daily (24h):** {daily_change}%  \n**Weekly (7d):** {weekly_change}%  \n**Monthly (30d):** {monthly_change}%")
         else:
             st.markdown("No market data available.")
         sentiment, sentiment_score = get_social_sentiment(asset_display)
@@ -338,7 +361,7 @@ def asset_data_mode():
             st.info("No chart uploaded yet for this asset.")
 
 # ---------------------------------------------------
-# Strategy Mode (Trade Logging & Analytics)
+# 3) Strategy Mode (Trade Logging & Analytics)
 # ---------------------------------------------------
 def strategy_mode():
     st.title("Strategy")
@@ -417,7 +440,7 @@ def strategy_mode():
         st.info("No trade log found yet.")
 
 # ---------------------------------------------------
-# Mindset Dashboard Mode (Dark Mode)
+# 4) Mindset Dashboard Mode (Dark Mode)
 # ---------------------------------------------------
 def mindset_mode():
     st.markdown(
