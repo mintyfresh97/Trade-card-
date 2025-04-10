@@ -1,11 +1,10 @@
 import streamlit as st
 import requests
 import os
-import json
 import io
 import textwrap
 import random
-import sqlite3  # New import for SQLite
+import sqlite3
 from datetime import datetime, date
 from PIL import Image, ImageDraw, ImageFont
 import pandas as pd
@@ -18,12 +17,11 @@ from streamlit_autorefresh import st_autorefresh
 # ---------------------------------------------------
 st.set_page_config(page_title="Trade Journal & PnL Dashboard", layout="wide")
 
-# Directory for journal screenshots (Trade Journal mode)
+# Create directories for charts if they don't exist.
 JOURNAL_CHART_DIR = "journal_charts"
 if not os.path.exists(JOURNAL_CHART_DIR):
     os.makedirs(JOURNAL_CHART_DIR)
 
-# Directory for dashboard chart uploads (PnL Dashboard mode)
 CHARTS_DIR = "charts"
 if not os.path.exists(CHARTS_DIR):
     os.makedirs(CHARTS_DIR)
@@ -31,11 +29,10 @@ if not os.path.exists(CHARTS_DIR):
 # ---------------------------------------------------
 # SQLite Persistence Setup
 # ---------------------------------------------------
-# Connect to (or create) the SQLite database file at the repo root.
+# Connect to (or create) the SQLite database file in the repo root.
 conn = sqlite3.connect("levels_data.db", check_same_thread=False)
 cursor = conn.cursor()
 
-# Create the asset_levels table if it doesn't exist.
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS asset_levels (
     asset TEXT PRIMARY KEY,
@@ -49,8 +46,7 @@ CREATE TABLE IF NOT EXISTS asset_levels (
 """)
 conn.commit()
 
-# Optional: Pre-populate the table with assets from your coinpaprika_ids dictionary.
-# (This ensures every asset has a row in the DB.)
+# Pre-populate the table with assets from coinpaprika_ids if not already present.
 coinpaprika_ids = {
     'Bitcoin (BTC)': 'btc-bitcoin',
     'Ethereum (ETH)': 'eth-ethereum',
@@ -119,7 +115,7 @@ def save_levels_for_asset(asset_name, levels):
     save_levels_to_db(asset_name, levels)
 
 # ---------------------------------------------------
-# Functions for the PnL & Risk Dashboard (Same as Before)
+# Other Shared Functions & Assets
 # ---------------------------------------------------
 icon_map = {
     "BTC": "bitcoin-btc-logo.png", "ETH": "ethereum-eth-logo.png",
@@ -158,9 +154,6 @@ def get_social_sentiment(coin):
         sentiment = "Neutral"
     return sentiment, sentiment_score
 
-# ---------------------------------------------------
-# Functions for the Trade Journal & Checklist (from File 1)
-# ---------------------------------------------------
 def show_checklist():
     with st.sidebar.expander("📋 Daily Trade Checklist", expanded=False):
         st.markdown("### 3-Point Psychology Checklist")
@@ -190,26 +183,25 @@ def show_checklist():
 # ---------------------------------------------------
 # Application Navigation
 # ---------------------------------------------------
-app_mode = st.sidebar.radio("Select App Mode", ["Trade Journal & Checklist", "PnL & Risk Dashboard"])
+app_mode = st.sidebar.radio("Select App Mode", 
+    ["Trade Journal & Checklist", "PnL & Risk Dashboard", "Mindset Dashboard"])
 
 # ====================================================
-# Trade Journal & Checklist Mode (Merged File 1)
+# Trade Journal & Checklist Mode
 # ====================================================
 if app_mode == "Trade Journal & Checklist":
     st.title("Trade Journal & Checklist")
     
-    # Display the daily checklist on the sidebar
+    # Display checklist in sidebar
     show_checklist()
     
-    # Sidebar date input for filtering trade log entries
+    # Sidebar: Date input for filtering trade log entries
     selected_day = st.sidebar.date_input("Select Day to Review", value=datetime.now().date())
     
-    # Display the trade log in the main area
     log_path = "trade_log.csv"
     if os.path.exists(log_path):
         df_log = pd.read_csv(log_path)
         df_log['Date'] = pd.to_datetime(df_log['Date'], errors='coerce')
-        # Filter trade log by the selected day
         df_day = df_log[df_log['Date'] == pd.to_datetime(selected_day)]
         if not df_day.empty:
             for idx, row in df_day.iterrows():
@@ -218,7 +210,6 @@ if app_mode == "Trade Journal & Checklist":
                     st.markdown(f"**Strategy:** {row['Strategy']}")
                     st.markdown(f"**RR Ratio:** {row['RR Ratio']}")
                     st.markdown(f"**Notes:** {row['Notes']}")
-                    # Auto-match chart screenshot from journal folder.
                     base_asset = row['Asset'].split()[0].upper()
                     chart_name = f"{base_asset}_{row['Date'].date()}.png"
                     image_path = os.path.join(JOURNAL_CHART_DIR, chart_name)
@@ -229,7 +220,6 @@ if app_mode == "Trade Journal & Checklist":
     else:
         st.info("No trade log found.")
     
-    # Journal Chart Upload in sidebar
     with st.sidebar.expander("📥 Upload Chart to Log Entry", expanded=False):
         st.markdown("Upload your chart screenshot to auto-attach to a journal entry.")
         asset_for_upload = st.text_input("Asset Name (e.g. BTC)", key="upload_asset")
@@ -243,45 +233,35 @@ if app_mode == "Trade Journal & Checklist":
             st.success("Chart uploaded and auto-linked to journal entry.")
 
 # ====================================================
-# PnL & Risk Dashboard Mode (Merged File 2)
+# PnL & Risk Dashboard Mode
 # ====================================================
 elif app_mode == "PnL & Risk Dashboard":
     st.title("PnL & Risk Dashboard")
     
-    # Real-Time Data Auto-Refresh (Every 30 seconds)
     st_autorefresh(interval=30000, limit=100, key="autorefresh")
     
-    # Layout: Left column for asset info and key levels; right column for editing and trade card preview.
     col1, col2 = st.columns([1, 2])
-    
     with col1:
         display_names = list(coinpaprika_ids.keys())
         asset_display = st.selectbox("Select Asset", display_names)
         asset_symbol = asset_display.split("(")[-1].replace(")", "").strip()
         
-        # Asset Icon
         icon_path = f"assets/{icon_map.get(asset_symbol, '')}"
         if os.path.exists(icon_path):
             st.image(icon_path, width=32)
         else:
             st.warning("Icon not found")
         
-        # Live price data from CoinPaprika API.
         price, daily_change, weekly_change, monthly_change = get_coin_data_from_paprika(asset_display)
         if price is not None:
             st.markdown(f"**Live Price:** ${price}")
-            st.markdown(
-                f"**Daily (24h):** {daily_change}%  \n"
-                f"**Weekly (7d):** {weekly_change}%  \n"
-                f"**Monthly (30d):** {monthly_change}%"
-            )
+            st.markdown(f"**Daily (24h):** {daily_change}%  \n**Weekly (7d):** {weekly_change}%  \n**Monthly (30d):** {monthly_change}%")
         else:
             st.markdown("No market data available.")
         
         sentiment, sentiment_score = get_social_sentiment(asset_display)
         st.markdown(f"**Social Sentiment:** {sentiment} (Score: {sentiment_score})")
         
-        # Display persistent key levels from the database.
         levels = get_levels_for_asset(asset_display)
         st.markdown("### Key Levels & Volume Strength")
         st.markdown(f"**Support:** {levels['support'] or 'N/A'}")
@@ -290,7 +270,6 @@ elif app_mode == "PnL & Risk Dashboard":
         st.markdown(f"**Supply:** {levels['supply'] or 'N/A'}")
         st.markdown(f"**CHoCH:** {levels['choch'] or 'N/A'}")
         
-        # Volume strength calculation.
         vol_df = pd.DataFrame({
             "Date": pd.date_range("2023-01-01", periods=30, freq="D"),
             "Volume": np.random.randint(1000, 5000, 30)
@@ -319,10 +298,8 @@ elif app_mode == "PnL & Risk Dashboard":
             new_resistance = st.text_input("Resistance", value=levels["resistance"])
             new_supply = st.text_input("Supply", value=levels["supply"])
             new_choch = st.text_input("CHoCH", value=levels["choch"])
-            
             st.markdown("#### Upload Chart Analysis")
             uploaded_file = st.file_uploader("Drag and drop your chart image (PNG/JPG)", type=["png", "jpg", "jpeg"], key="dashboard_chart")
-            
             if st.button("Save Levels & Chart"):
                 updated_levels = {
                     "support": new_support,
@@ -339,7 +316,6 @@ elif app_mode == "PnL & Risk Dashboard":
                     with open(file_path, "wb") as f:
                         f.write(uploaded_file.getvalue())
                     updated_levels["chart_path"] = filename
-                
                 save_levels_for_asset(asset_display, updated_levels)
                 st.success("Levels and chart updated!")
                 st.experimental_rerun()
@@ -362,7 +338,6 @@ elif app_mode == "PnL & Risk Dashboard":
                 st.markdown(f"24h Change: {daily_change}%")
             else:
                 st.markdown("Live Price: N/A")
-            
             entry_price_default = price if price is not None else 82000.0
             entry = st.number_input("Entry Price", value=entry_price_default, format="%.2f")
             position = st.number_input("Position Size (£)", value=500.0)
@@ -372,21 +347,18 @@ elif app_mode == "PnL & Risk Dashboard":
             timeframes = ["1m", "5m", "15m", "1h", "4h", "Daily"]
             entry_tf = st.selectbox("Entry Timeframe", options=timeframes, index=1)
             analysis_tf = st.selectbox("Analysis Timeframe", options=timeframes, index=2)
-            
             st.markdown("### Trade Notes")
             strategy = st.text_input("Trade Strategy", placeholder="e.g. EMA Bounce, Breakout Rejection")
             news = st.text_input("News Catalyst", placeholder="e.g. FOMC, ETF Approval, CPI Report")
             execution = st.text_input("Execution Plan", placeholder="e.g. Enter on candle close, SL below wick")
             psychology = st.text_input("Psychology Reminder", placeholder="e.g. Stick to plan, avoid revenge trading")
             tags = st.multiselect("Tags", options=["Scalp", "Swing", "Long", "Short", "1H", "4H", "Daily", "Breakout", "Rejection"])
-            
             trade_date = datetime.now().strftime("%Y-%m-%d")
             total_exposure = position * leverage
             risk = abs(entry - stop_loss) * total_exposure / entry
             reward = abs(take_profit - entry) * total_exposure / entry
             breakeven = round((entry + stop_loss) / 2, 2)
             rr_ratio = round(reward / risk, 2) if risk != 0 else 0
-            
             st.markdown(f"Position: £{position}")
             st.markdown(f"Leverage: {leverage}x")
             st.markdown(f"Entry: {entry}")
@@ -409,7 +381,6 @@ elif app_mode == "PnL & Risk Dashboard":
                 st.markdown(f"**Psychology Reminder:** {psychology}")
             if tags:
                 st.markdown(f"**Tags:** {', '.join(tags)}")
-            
             if st.button("Download Trade Card"):
                 lines = []
                 lines.append("=== Trade Info ===")
@@ -441,7 +412,6 @@ elif app_mode == "PnL & Risk Dashboard":
                     lines.extend(textwrap.wrap(f"Mindset: {psychology}", width=50))
                 if tags:
                     lines.extend(textwrap.wrap(f"Tags: {', '.join(tags)}", width=50))
-                
                 line_height = 34
                 image_height = 140 + line_height * len(lines)
                 img = Image.new("RGB", (700, image_height), color=(20, 20, 20))
@@ -549,3 +519,120 @@ elif app_mode == "PnL & Risk Dashboard":
                 file_name="trade_log.csv",
                 mime="text/csv"
             )
+
+# ====================================================
+# Mindset Dashboard Mode (Dark Mode)
+# ====================================================
+elif app_mode == "Mindset Dashboard":
+    # Inject custom CSS for dark mode specific to this section.
+    st.markdown(
+        """
+        <style>
+        .reportview-container, .main, .block-container {
+            background-color: #111;
+            color: #fff;
+        }
+        .sidebar .sidebar-content {
+            background-color: #222;
+            color: #fff;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+    
+    st.title("🧠 Mindset Dashboard")
+    st.caption("Inspired by *Trading in the Zone* — build discipline and self-awareness before and after every trade.")
+    
+    col1, col2 = st.columns(2)
+    
+    # --- Column 1: Mindset Check-in ---
+    with col1:
+        st.subheader("🔍 Current Mental State")
+        emotional_state = st.slider("Emotional State", 0, 10, 5, help="0 = Calm, 10 = Anxious")
+        focus_level = st.slider("Focus Level", 0, 10, 5, help="0 = Distracted, 10 = Fully Focused")
+        confidence = st.slider("Confidence", 0, 10, 5, help="0 = Doubtful, 10 = Highly Confident")
+        
+        st.markdown("### ✅ Pre-Trade Checklist")
+        checklist = []
+        if st.checkbox("I’ve accepted the risk"):
+            checklist.append("Accepted risk")
+        if st.checkbox("Setup fits my plan"):
+            checklist.append("Setup valid")
+        if st.checkbox("I am not attached to the outcome"):
+            checklist.append("Detached")
+        if st.checkbox("Clear entry/SL/TP defined"):
+            checklist.append("Defined setup")
+        if st.checkbox("I will execute without fear"):
+            checklist.append("Execute confidently")
+            
+        if st.button("📌 Log Mindset"):
+            new_row = {
+                "Timestamp": datetime.now(),
+                "Emotional State": emotional_state,
+                "Focus Level": focus_level,
+                "Confidence Level": confidence,
+                "Checklist": ", ".join(checklist),
+                "Followed Plan": "",
+                "Impact": "",
+                "Reflection": ""
+            }
+            csv_file = "mindset_log.csv"
+            if not os.path.exists(csv_file):
+                pd.DataFrame(columns=[
+                    "Timestamp", "Emotional State", "Focus Level", "Confidence Level",
+                    "Checklist", "Followed Plan", "Impact", "Reflection"
+                ]).to_csv(csv_file, index=False)
+            df = pd.read_csv(csv_file)
+            df = df.append(new_row, ignore_index=True)
+            df.to_csv(csv_file, index=False)
+            st.success("Mindset logged!")
+    
+    # --- Column 2: Affirmations & Reflection ---
+    with col2:
+        st.subheader("💬 Daily Affirmation")
+        affirmations = [
+            "Anything can happen.",
+            "You don’t need to know what’s going to happen next to make money.",
+            "Trading is not about being right, it’s about managing risk.",
+            "I am the casino, not the gambler.",
+            "My edge plays out over time, not every trade.",
+            "Accepting risk is power. I control my response."
+        ]
+        if "affirmation" not in st.session_state:
+            st.session_state.affirmation = random.choice(affirmations)
+        st.markdown(f"> *{st.session_state.affirmation}*")
+        if st.button("🔁 Shuffle"):
+            st.session_state.affirmation = random.choice(affirmations)
+        
+        st.markdown("### 🧾 Post-Trade Reflection")
+        followed_plan = st.radio("Did you follow your plan?", ["Yes", "No"])
+        impact = st.selectbox("What affected your decision?", [
+            "None", "Fear", "Overconfidence", "FOMO", "Impatience", "External Distraction"
+        ])
+        reflection = st.text_area("Notes or lessons learned")
+        
+        if st.button("📝 Save Reflection"):
+            csv_file = "mindset_log.csv"
+            if not os.path.exists(csv_file):
+                st.warning("Please log your mindset first.")
+            else:
+                df = pd.read_csv(csv_file)
+                if not df.empty:
+                    df.at[len(df)-1, "Followed Plan"] = followed_plan
+                    df.at[len(df)-1, "Impact"] = impact
+                    df.at[len(df)-1, "Reflection"] = reflection
+                    df.to_csv(csv_file, index=False)
+                    st.success("Reflection saved to last log.")
+                else:
+                    st.warning("Please log your mindset first.")
+    
+    st.markdown("---")
+    st.markdown("### 🗂️ Recent Logs")
+    csv_file = "mindset_log.csv"
+    if os.path.exists(csv_file):
+        log_df = pd.read_csv(csv_file)
+        st.dataframe(log_df.tail(5))
+    else:
+        st.info("No logs found yet.")
+
