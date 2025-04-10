@@ -17,11 +17,10 @@ from streamlit_autorefresh import st_autorefresh
 # ---------------------------------------------------
 st.set_page_config(page_title="Trade Journal & PnL Dashboard", layout="wide")
 
-# Create directories if needed
+# Create directories if they don't exist
 JOURNAL_CHART_DIR = "journal_charts"
 if not os.path.exists(JOURNAL_CHART_DIR):
     os.makedirs(JOURNAL_CHART_DIR)
-
 CHARTS_DIR = "charts"
 if not os.path.exists(CHARTS_DIR):
     os.makedirs(CHARTS_DIR)
@@ -234,7 +233,7 @@ def trade_journal_mode():
             st.success("Chart uploaded and auto-linked to journal entry.")
 
 # ---------------------------------------------------
-# Asset Data Mode (formerly PnL & Risk Dashboard, without Trade Card Preview)
+# Asset Data Mode (Formerly PnL & Risk Dashboard, without Trade Card Preview)
 # ---------------------------------------------------
 def asset_data_mode():
     st.title("Asset Data")
@@ -290,7 +289,6 @@ def asset_data_mode():
         st.markdown(f"**Volume Strength Score:** {vol_score:.1f} / 10")
     with col2:
         st.subheader("Edit Key Levels / Upload Chart")
-        # NEW: Use an expander with a two-column layout for a more stylish design and extra fields
         with st.expander("Modify Levels & Chart", expanded=True):
             st.markdown("#### Key Levels Configuration")
             kl_col1, kl_col2 = st.columns(2)
@@ -317,10 +315,6 @@ def asset_data_mode():
                     "supply": new_supply,
                     "choch": new_choch,
                     "chart_path": levels.get("chart_path", "")
-                    # To store additional remarks, update your DB schema if needed:
-                    # "pivot_points": new_pivot,
-                    # "fib_levels": fib_levels,
-                    # "volume_profile": volume_profile
                 }
                 if uploaded_file is not None:
                     file_ext = os.path.splitext(uploaded_file.name)[1]
@@ -527,13 +521,16 @@ def mindset_mode():
         st.info("No logs found yet.")
 
 # ---------------------------------------------------
-# Navigation: Call the appropriate function based on selection
+# Navigation: Single Radio Call
 # ---------------------------------------------------
-if st.sidebar.radio("Mode", ["Trade Journal & Checklist", "Asset Data", "Strategy", "Mindset Dashboard"]) == "Trade Journal & Checklist":
+mode = st.sidebar.radio("Select App Mode", 
+    ["Trade Journal & Checklist", "Asset Data", "Strategy", "Mindset Dashboard"])
+
+if mode == "Trade Journal & Checklist":
     trade_journal_mode()
-elif st.sidebar.radio("Mode", ["Trade Journal & Checklist", "Asset Data", "Strategy", "Mindset Dashboard"]) == "Asset Data":
+elif mode == "Asset Data":
     asset_data_mode()
-elif st.sidebar.radio("Mode", ["Trade Journal & Checklist", "Asset Data", "Strategy", "Mindset Dashboard"]) == "Strategy":
+elif mode == "Strategy":
     strategy_mode()
-elif st.sidebar.radio("Mode", ["Trade Journal & Checklist", "Asset Data", "Strategy", "Mindset Dashboard"]) == "Mindset Dashboard":
+elif mode == "Mindset Dashboard":
     mindset_mode()
