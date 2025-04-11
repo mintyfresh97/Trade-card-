@@ -5,7 +5,7 @@ import io
 import textwrap
 import random
 import sqlite3
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from PIL import Image, ImageDraw, ImageFont
 import pandas as pd
 import numpy as np
@@ -17,7 +17,7 @@ from streamlit_autorefresh import st_autorefresh
 # ---------------------------------------------------
 st.set_page_config(page_title="Trade Journal & PnL Dashboard", layout="wide")
 
-# Create directories if they don't exist
+# Create folders if they don't exist.
 JOURNAL_CHART_DIR = "journal_charts"
 if not os.path.exists(JOURNAL_CHART_DIR):
     os.makedirs(JOURNAL_CHART_DIR)
@@ -30,7 +30,6 @@ if not os.path.exists(CHARTS_DIR):
 # ---------------------------------------------------
 conn = sqlite3.connect("levels_data.db", check_same_thread=False)
 cursor = conn.cursor()
-
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS asset_levels (
     asset TEXT PRIMARY KEY,
@@ -152,7 +151,7 @@ def get_social_sentiment(coin):
     return sentiment, sentiment_score
 
 # ---------------------------------------------------
-# 1) Trade Journal & Checklist Mode
+# 1) Trade Journal & Checklist Mode (Dark Mode, 2-Column Layout)
 # ---------------------------------------------------
 def trade_journal_mode():
     st.markdown("""
@@ -224,7 +223,7 @@ def trade_journal_mode():
             st.success("Chart uploaded and auto-linked to journal entry.")
 
 # ---------------------------------------------------
-# 2) Asset Data Mode
+# 2) Asset Data Mode (Refined Look with Stylish Banner)
 # ---------------------------------------------------
 def asset_data_mode():
     st.markdown("""
@@ -524,13 +523,21 @@ def mindset_mode():
         st.info("No logs found yet.")
 
 # ---------------------------------------------------
-# 5) Flip Tracker Mode (Structure Flip Tracker using Binance)
+# 5) Flip Tracker Mode (Using Binance or Demo Data)
 # ---------------------------------------------------
 def flip_tracker_mode():
     st.title("Structure Flip Tracker")
     st.caption("Tracks bullish or bearish structure flips based on 15m candle data from Binance.")
     
-    # CONFIGURATION
+    # Option to toggle Demo Mode:
+    demo_mode = st.checkbox("Enable Demo Mode", value=False)
+    if demo_mode:
+        # Let the user choose a demo trading day, defaulting to 2025-04-11
+        demo_date = st.date_input("Demo Trading Date", value=datetime(2025, 4, 11))
+    else:
+        demo_date = None  # live mode will be used
+    
+    # CONFIGURATION for Flip Tracker
     ASSETS = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'LINKUSDT', 'SUIUSDT', 'ONDOUSDT', 'CRVUSDT', 'CVXUSDT', 'FARTUSDT']
     API_URL = 'https://api.binance.com/api/v3/klines'
     TIMEFRAME = '15m'
@@ -539,7 +546,26 @@ def flip_tracker_mode():
         'newyork': (13, 20)    # 13:00–20:00 UTC
     }
     
-    # FUNCTIONS FOR FLIP TRACKER
+    # Demo version of fetch_ohlcv: generate simulated data for the demo_date
+    def fetch_ohlcv_demo(symbol, trading_date, interval=TIMEFRAME, limit=50):
+        candles = []
+        # Start at midnight UTC of the given trading date.
+        start_dt = datetime(trading_date.year, trading_date.month, trading_date.day)
+        prev_close = 100.0 + random.uniform(-5, 5)  # start price with a slight random variation
+        for i in range(limit):
+            open_time = int((start_dt.timestamp() + i * 15 * 60) * 1000)
+            open_price = prev_close
+            delta = random.uniform(-1, 1)
+            close_price = open_price + delta
+            high_price = max(open_price, close_price) + random.uniform(0, 0.5)
+            low_price = min(open_price, close_price) - random.uniform(0, 0.5)
+            volume = random.uniform(100, 1000)
+            close_time = open_time + 15 * 60 * 1000
+            candles.append([open_time, open_price, high_price, low_price, close_price, volume, close_time])
+            prev_close = close_price
+        return candles
+
+    # Live fetch function (as before)
     def fetch_ohlcv(symbol, interval=TIMEFRAME, limit=50):
         params = {'symbol': symbol, 'interval': interval, 'limit': limit}
         r = requests.get(API_URL, params=params)
@@ -560,11 +586,10 @@ def flip_tracker_mode():
         last_lh_idx, last_lh = None, None
         last_hl_idx, last_hl = None, None
     
-        # Debug output for understanding calculations
         st.write(f"Processing {symbol}:")
-        st.write("Highs:", highs[:5])
-        st.write("Lows:", lows[:5])
-        st.write("Closes:", closes[:5])
+        st.write("Highs (first 5):", highs[:5])
+        st.write("Lows (first 5):", lows[:5])
+        st.write("Closes (first 5):", closes[:5])
     
         for i in range(2, len(highs)-2):
             if is_swing_high(i, highs):
@@ -573,7 +598,9 @@ def flip_tracker_mode():
                 last_hl_idx, last_hl = i, lows[i]
     
         flip = None
-        if last_lh_idx and closes[-1] > last_lh:
+        # Optionally, introduce a delta for testing sensitivity.
+        delta = 0.01
+        if last_lh_idx and closes[-1] > last_lh - delta:
             flip = {
                 'asset': symbol,
                 'flip_type': 'BULLISH',
@@ -581,7 +608,7 @@ def flip_tracker_mode():
                 'flip_time': datetime.utcfromtimestamp(timestamps[-1]/1000).strftime('%H:%M'),
                 'timestamp': timestamps[-1] // 1000
             }
-        elif last_hl_idx and closes[-1] < last_hl:
+        elif last_hl_idx and closes[-1] < last_hl + delta:
             flip = {
                 'asset': symbol,
                 'flip_type': 'BEARISH',
@@ -593,6 +620,8 @@ def flip_tracker_mode():
         return flip
     
     def is_in_session():
+        if demo_mode:
+            return True  # In demo mode, always run detection
         now = datetime.utcnow()
         hour = now.hour
         return (SESSION_UTC_HOURS['london'][0] <= hour < SESSION_UTC_HOURS['london'][1]) or \
@@ -600,8 +629,11 @@ def flip_tracker_mode():
     
     all_flips = []
     if is_in_session():
-        for asset in ASSETS:
-            candles = fetch_ohlcv(asset)
+        for asset in ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'LINKUSDT', 'SUIUSDT', 'ONDOUSDT', 'CRVUSDT', 'CVXUSDT', 'FARTUSDT']:
+            if demo_mode and demo_date:
+                candles = fetch_ohlcv_demo(asset, demo_date)
+            else:
+                candles = fetch_ohlcv(asset)
             if candles:
                 flip = detect_flip(candles, asset)
                 if flip:
