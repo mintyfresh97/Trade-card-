@@ -542,22 +542,22 @@ def mindset_mode():
         st.info("No logs found yet.")
 
 # ---------------------------------------------------
-# 5) Flip Tracker Mode (Structure Flip Tracker)
+# 5) Flip Tracker Mode (Fetching Data from Binance)
 # ---------------------------------------------------
 def flip_tracker_mode():
     st.title("Structure Flip Tracker")
     st.caption("Tracks bullish or bearish structure flips based on 15m candle data from Binance.")
     
-    # CONFIG for Flip Tracker
+    # CONFIGURATION
     ASSETS = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'LINKUSDT', 'SUIUSDT', 'ONDOUSDT', 'CRVUSDT', 'CVXUSDT', 'FARTUSDT']
     API_URL = 'https://api.binance.com/api/v3/klines'
     TIMEFRAME = '15m'
     SESSION_UTC_HOURS = {
-        'london': (7, 12),
-        'newyork': (13, 20)
+        'london': (7, 12),     # 07:00–12:00 UTC
+        'newyork': (13, 20)    # 13:00–20:00 UTC
     }
     
-    # Flip Tracker Functions
+    # FUNCTIONS FOR FLIP TRACKER
     def fetch_ohlcv(symbol, interval=TIMEFRAME, limit=50):
         params = {'symbol': symbol, 'interval': interval, 'limit': limit}
         r = requests.get(API_URL, params=params)
@@ -578,7 +578,6 @@ def flip_tracker_mode():
         last_lh_idx, last_lh = None, None
         last_hl_idx, last_hl = None, None
     
-        # Find most recent valid LH and HL
         for i in range(2, len(highs)-2):
             if is_swing_high(i, highs):
                 last_lh_idx, last_lh = i, highs[i]
