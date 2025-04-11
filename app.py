@@ -152,24 +152,15 @@ def get_social_sentiment(coin):
     return sentiment, sentiment_score
 
 # ---------------------------------------------------
-# 1) Trade Journal & Checklist Mode (Dark Mode, 2-Column Layout)
+# 1) Trade Journal & Checklist Mode
 # ---------------------------------------------------
 def trade_journal_mode():
-    st.markdown(
-        """
-        <style>
-        .reportview-container, .main, .block-container {
-            background-color: #111;
-            color: #fff;
-        }
-        .sidebar .sidebar-content {
-            background-color: #222;
-            color: #fff;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
+    st.markdown("""
+    <style>
+    .reportview-container, .main, .block-container { background-color: #111; color: #fff; }
+    .sidebar .sidebar-content { background-color: #222; color: #fff; }
+    </style>
+    """, unsafe_allow_html=True)
     st.title("🧾 Trade Journal & Checklist")
     st.caption("Daily pre-trade mindset and structure check")
     col1, col2 = st.columns(2)
@@ -233,7 +224,7 @@ def trade_journal_mode():
             st.success("Chart uploaded and auto-linked to journal entry.")
 
 # ---------------------------------------------------
-# 2) Asset Data Mode (Refined Look with Stylish Banner)
+# 2) Asset Data Mode
 # ---------------------------------------------------
 def asset_data_mode():
     st.markdown("""
@@ -441,21 +432,12 @@ def strategy_mode():
 # 4) Mindset Dashboard Mode (Dark Mode)
 # ---------------------------------------------------
 def mindset_mode():
-    st.markdown(
-        """
-        <style>
-        .reportview-container, .main, .block-container {
-            background-color: #111;
-            color: #fff;
-        }
-        .sidebar .sidebar-content {
-            background-color: #222;
-            color: #fff;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
+    st.markdown("""
+    <style>
+    .reportview-container, .main, .block-container { background-color: #111; color: #fff; }
+    .sidebar .sidebar-content { background-color: #222; color: #fff; }
+    </style>
+    """, unsafe_allow_html=True)
     st.title("🧠 Mindset Dashboard")
     st.caption("Inspired by *Trading in the Zone* — build discipline and self-awareness before and after every trade.")
     col1, col2 = st.columns(2)
@@ -542,7 +524,7 @@ def mindset_mode():
         st.info("No logs found yet.")
 
 # ---------------------------------------------------
-# 5) Flip Tracker Mode (Fetching Data from Binance)
+# 5) Flip Tracker Mode (Structure Flip Tracker using Binance)
 # ---------------------------------------------------
 def flip_tracker_mode():
     st.title("Structure Flip Tracker")
@@ -578,6 +560,12 @@ def flip_tracker_mode():
         last_lh_idx, last_lh = None, None
         last_hl_idx, last_hl = None, None
     
+        # Debug output for understanding calculations
+        st.write(f"Processing {symbol}:")
+        st.write("Highs:", highs[:5])
+        st.write("Lows:", lows[:5])
+        st.write("Closes:", closes[:5])
+    
         for i in range(2, len(highs)-2):
             if is_swing_high(i, highs):
                 last_lh_idx, last_lh = i, highs[i]
@@ -601,6 +589,7 @@ def flip_tracker_mode():
                 'flip_time': datetime.utcfromtimestamp(timestamps[-1]/1000).strftime('%H:%M'),
                 'timestamp': timestamps[-1] // 1000
             }
+        st.write(f"Last LH: {last_lh}, Last HL: {last_hl}, Latest Close: {closes[-1]}")
         return flip
     
     def is_in_session():
