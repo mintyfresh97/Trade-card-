@@ -21,7 +21,6 @@ st.set_page_config(page_title="Trade Journal & PnL Dashboard", layout="wide")
 JOURNAL_CHART_DIR = "journal_charts"
 if not os.path.exists(JOURNAL_CHART_DIR):
     os.makedirs(JOURNAL_CHART_DIR)
-
 CHARTS_DIR = "charts"
 if not os.path.exists(CHARTS_DIR):
     os.makedirs(CHARTS_DIR)
@@ -237,7 +236,6 @@ def trade_journal_mode():
 # 2) Asset Data Mode (Refined Look with Stylish Banner)
 # ---------------------------------------------------
 def asset_data_mode():
-    # Stylish banner for Asset Data page
     st.markdown("""
     <style>
     .asset-data-banner {
@@ -264,7 +262,7 @@ def asset_data_mode():
         <p>Monitor real-time market info and manage key levels</p>
     </div>
     """, unsafe_allow_html=True)
-
+    
     st_autorefresh(interval=30000, limit=100, key="autorefresh")
     col1, col2 = st.columns([1, 2])
     with col1:
@@ -544,10 +542,94 @@ def mindset_mode():
         st.info("No logs found yet.")
 
 # ---------------------------------------------------
+# 5) Flip Tracker Mode (Structure Flip Tracker)
+# ---------------------------------------------------
+def flip_tracker_mode():
+    st.title("Structure Flip Tracker")
+    st.caption("Tracks bullish or bearish structure flips based on 15m candle data from Binance.")
+    
+    # CONFIG for Flip Tracker
+    ASSETS = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'LINKUSDT', 'SUIUSDT', 'ONDOUSDT', 'CRVUSDT', 'CVXUSDT', 'FARTUSDT']
+    API_URL = 'https://api.binance.com/api/v3/klines'
+    TIMEFRAME = '15m'
+    SESSION_UTC_HOURS = {
+        'london': (7, 12),
+        'newyork': (13, 20)
+    }
+    
+    # Flip Tracker Functions
+    def fetch_ohlcv(symbol, interval=TIMEFRAME, limit=50):
+        params = {'symbol': symbol, 'interval': interval, 'limit': limit}
+        r = requests.get(API_URL, params=params)
+        return r.json() if r.status_code == 200 else []
+    
+    def is_swing_high(i, highs):
+        return highs[i-1] < highs[i] and highs[i+1] < highs[i]
+    
+    def is_swing_low(i, lows):
+        return lows[i-1] > lows[i] and lows[i+1] > lows[i]
+    
+    def detect_flip(candles, symbol):
+        highs = [float(c[2]) for c in candles]
+        lows = [float(c[3]) for c in candles]
+        closes = [float(c[4]) for c in candles]
+        timestamps = [int(c[0]) for c in candles]
+    
+        last_lh_idx, last_lh = None, None
+        last_hl_idx, last_hl = None, None
+    
+        # Find most recent valid LH and HL
+        for i in range(2, len(highs)-2):
+            if is_swing_high(i, highs):
+                last_lh_idx, last_lh = i, highs[i]
+            if is_swing_low(i, lows):
+                last_hl_idx, last_hl = i, lows[i]
+    
+        flip = None
+        if last_lh_idx and closes[-1] > last_lh:
+            flip = {
+                'asset': symbol,
+                'flip_type': 'BULLISH',
+                'flip_price': closes[-1],
+                'flip_time': datetime.utcfromtimestamp(timestamps[-1]/1000).strftime('%H:%M'),
+                'timestamp': timestamps[-1] // 1000
+            }
+        elif last_hl_idx and closes[-1] < last_hl:
+            flip = {
+                'asset': symbol,
+                'flip_type': 'BEARISH',
+                'flip_price': closes[-1],
+                'flip_time': datetime.utcfromtimestamp(timestamps[-1]/1000).strftime('%H:%M'),
+                'timestamp': timestamps[-1] // 1000
+            }
+        return flip
+    
+    def is_in_session():
+        now = datetime.utcnow()
+        hour = now.hour
+        return (SESSION_UTC_HOURS['london'][0] <= hour < SESSION_UTC_HOURS['london'][1]) or \
+               (SESSION_UTC_HOURS['newyork'][0] <= hour < SESSION_UTC_HOURS['newyork'][1])
+    
+    all_flips = []
+    if is_in_session():
+        for asset in ASSETS:
+            candles = fetch_ohlcv(asset)
+            if candles:
+                flip = detect_flip(candles, asset)
+                if flip:
+                    all_flips.append(flip)
+    
+    if all_flips:
+        st.subheader("Detected Flips")
+        st.write(all_flips)
+    else:
+        st.info("No flips detected at this time.")
+
+# ---------------------------------------------------
 # Navigation: Single Radio Call
 # ---------------------------------------------------
 mode = st.sidebar.radio("Select App Mode", 
-    ["Trade Journal & Checklist", "Asset Data", "Strategy", "Mindset Dashboard"])
+    ["Trade Journal & Checklist", "Asset Data", "Strategy", "Mindset Dashboard", "Flip Tracker"])
 
 if mode == "Trade Journal & Checklist":
     trade_journal_mode()
@@ -557,3 +639,5 @@ elif mode == "Strategy":
     strategy_mode()
 elif mode == "Mindset Dashboard":
     mindset_mode()
+elif mode == "Flip Tracker":
+    flip_tracker_mode()
