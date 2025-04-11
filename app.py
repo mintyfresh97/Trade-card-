@@ -17,7 +17,7 @@ from streamlit_autorefresh import st_autorefresh
 # ---------------------------------------------------
 st.set_page_config(page_title="Trade Journal & PnL Dashboard", layout="wide")
 
-# Create folders if they don't exist.
+# Create directories if they don't exist.
 JOURNAL_CHART_DIR = "journal_charts"
 if not os.path.exists(JOURNAL_CHART_DIR):
     os.makedirs(JOURNAL_CHART_DIR)
@@ -30,6 +30,7 @@ if not os.path.exists(CHARTS_DIR):
 # ---------------------------------------------------
 conn = sqlite3.connect("levels_data.db", check_same_thread=False)
 cursor = conn.cursor()
+
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS asset_levels (
     asset TEXT PRIMARY KEY,
@@ -57,6 +58,7 @@ coinpaprika_ids = {
     'Convex Finance (CVX)': 'cvx-convex-finance',
     'Based Fartcoin (FARTCOIN)': 'fartcoin-based-fartcoin'
 }
+
 for asset in coinpaprika_ids.keys():
     cursor.execute("""
         INSERT OR IGNORE INTO asset_levels (asset, support, demand, resistance, supply, choch, chart_path)
@@ -529,13 +531,13 @@ def flip_tracker_mode():
     st.title("Structure Flip Tracker")
     st.caption("Tracks bullish or bearish structure flips based on 15m candle data from Binance.")
     
-    # Option to toggle Demo Mode:
+    # Option to toggle Demo Mode
     demo_mode = st.checkbox("Enable Demo Mode", value=False)
     if demo_mode:
         # Let the user choose a demo trading day, defaulting to 2025-04-11
         demo_date = st.date_input("Demo Trading Date", value=datetime(2025, 4, 11))
     else:
-        demo_date = None  # live mode will be used
+        demo_date = None  # Use live data
     
     # CONFIGURATION for Flip Tracker
     ASSETS = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'LINKUSDT', 'SUIUSDT', 'ONDOUSDT', 'CRVUSDT', 'CVXUSDT', 'FARTUSDT']
@@ -546,12 +548,12 @@ def flip_tracker_mode():
         'newyork': (13, 20)    # 13:00–20:00 UTC
     }
     
-    # Demo version of fetch_ohlcv: generate simulated data for the demo_date
+    # Demo fetch function: generate simulated 15m candle data
     def fetch_ohlcv_demo(symbol, trading_date, interval=TIMEFRAME, limit=50):
         candles = []
-        # Start at midnight UTC of the given trading date.
+        # Start at midnight UTC on the given trading_date.
         start_dt = datetime(trading_date.year, trading_date.month, trading_date.day)
-        prev_close = 100.0 + random.uniform(-5, 5)  # start price with a slight random variation
+        prev_close = 100.0 + random.uniform(-5, 5)  # Starting price with slight variation
         for i in range(limit):
             open_time = int((start_dt.timestamp() + i * 15 * 60) * 1000)
             open_price = prev_close
@@ -564,8 +566,8 @@ def flip_tracker_mode():
             candles.append([open_time, open_price, high_price, low_price, close_price, volume, close_time])
             prev_close = close_price
         return candles
-
-    # Live fetch function (as before)
+    
+    # Live fetch function
     def fetch_ohlcv(symbol, interval=TIMEFRAME, limit=50):
         params = {'symbol': symbol, 'interval': interval, 'limit': limit}
         r = requests.get(API_URL, params=params)
@@ -598,13 +600,12 @@ def flip_tracker_mode():
                 last_hl_idx, last_hl = i, lows[i]
     
         flip = None
-        # Optionally, introduce a delta for testing sensitivity.
-        delta = 0.01
+        delta = 0.01  # small adjustment for sensitivity
         if last_lh_idx and closes[-1] > last_lh - delta:
             flip = {
                 'asset': symbol,
                 'flip_type': 'BULLISH',
-                'flip_price': closes[-1],
+                'flip_price': round(closes[-1], 2),
                 'flip_time': datetime.utcfromtimestamp(timestamps[-1]/1000).strftime('%H:%M'),
                 'timestamp': timestamps[-1] // 1000
             }
@@ -612,7 +613,7 @@ def flip_tracker_mode():
             flip = {
                 'asset': symbol,
                 'flip_type': 'BEARISH',
-                'flip_price': closes[-1],
+                'flip_price': round(closes[-1], 2),
                 'flip_time': datetime.utcfromtimestamp(timestamps[-1]/1000).strftime('%H:%M'),
                 'timestamp': timestamps[-1] // 1000
             }
@@ -621,7 +622,7 @@ def flip_tracker_mode():
     
     def is_in_session():
         if demo_mode:
-            return True  # In demo mode, always run detection
+            return True  # Force detection in demo mode
         now = datetime.utcnow()
         hour = now.hour
         return (SESSION_UTC_HOURS['london'][0] <= hour < SESSION_UTC_HOURS['london'][1]) or \
