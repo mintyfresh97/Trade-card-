@@ -152,6 +152,33 @@ def get_social_sentiment(coin):
     return sentiment, sentiment_score
 
 # ---------------------------------------------------
+# Order Book Sub-Feature (Integrated from Flask Code)
+# ---------------------------------------------------
+def fetch_orderbook(symbol: str):
+    """
+    Fetch the level 2 order book data for a given asset symbol.
+    Assumes trading pair is symbol-USDT.
+    """
+    api_url = f"https://api.kucoin.com/api/v1/market/orderbook/level2?symbol={symbol}-USDT"
+    try:
+        response = requests.get(api_url, timeout=5)
+        response.raise_for_status()  # Raise exception for HTTP errors
+        return response.json()
+    except requests.RequestException as e:
+        return {"error": str(e), "symbol": symbol}
+
+def orderbook_dashboard():
+    """
+    Fetch and display order book data for a preset list of assets.
+    """
+    st.subheader("Order Book Dashboard")
+    ASSETS = ["BTC", "ETH", "ADA", "SOL", "LINK", "XRP", "ONDO", "SUI", "CVX", "CRV", "FARTCOIN"]
+    orderbooks = {}
+    for asset in ASSETS:
+        orderbooks[asset] = fetch_orderbook(asset)
+    st.json(orderbooks)
+
+# ---------------------------------------------------
 # 1) Trade Journal & Checklist Mode (Dark Mode, 2-Column Layout)
 # ---------------------------------------------------
 def trade_journal_mode():
@@ -522,6 +549,15 @@ def mindset_mode():
         st.dataframe(log_df.tail(5))
     else:
         st.info("No logs found yet.")
+
+    # ---------------------------------------------------
+    # Order Book Sub-Link Under Mindset Dashboard
+    # ---------------------------------------------------
+    st.markdown("---")
+    st.markdown("#### Sub-Feature: Order Book Dashboard")
+    st.markdown("Click the button below to fetch and view the KuCoin level‑2 order book data for selected assets.")
+    if st.button("Show Order Book Dashboard"):
+        orderbook_dashboard()
 
 # ---------------------------------------------------
 # Navigation (Reordered)
