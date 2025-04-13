@@ -524,16 +524,23 @@ def mindset_mode():
         st.info("No logs found yet.")
 
 # ---------------------------------------------------
-# Navigation: Single Radio Call
+# Navigation (Reordered)
 # ---------------------------------------------------
-mode = st.sidebar.radio("Select App Mode", 
-    ["Trade Journal & Checklist", "Asset Data", "Strategy", "Mindset Dashboard"])
+mode = st.sidebar.radio(
+    "Select App Mode", 
+    [
+        "Asset Data", 
+        "Strategy", 
+        "Mindset Dashboard", 
+        "Trade Journal & Checklist"
+    ]
+)
 
-if mode == "Trade Journal & Checklist":
-    trade_journal_mode()
-elif mode == "Asset Data":
+if mode == "Asset Data":
     asset_data_mode()
 elif mode == "Strategy":
     strategy_mode()
 elif mode == "Mindset Dashboard":
     mindset_mode()
+elif mode == "Trade Journal & Checklist":
+    trade_journal_mode()
