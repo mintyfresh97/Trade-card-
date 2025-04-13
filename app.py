@@ -524,130 +524,10 @@ def mindset_mode():
         st.info("No logs found yet.")
 
 # ---------------------------------------------------
-# 5) Flip Tracker Mode (Using Binance or Demo Data)
-# ---------------------------------------------------
-def flip_tracker_mode():
-    st.title("Structure Flip Tracker")
-    st.caption("Tracks bullish or bearish structure flips based on 15m candle data from Binance.")
-    
-    # Option to toggle Demo Mode
-    demo_mode = st.checkbox("Enable Demo Mode", value=False)
-    if demo_mode:
-        demo_date = st.date_input("Demo Trading Date", value=datetime(2025, 4, 11))
-    else:
-        demo_date = None
-    
-    # CONFIGURATION for Flip Tracker
-    ASSETS = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'LINKUSDT', 'SUIUSDT', 'ONDOUSDT', 'CRVUSDT', 'CVXUSDT', 'FARTUSDT']
-    API_URL = 'https://api.binance.com/api/v3/klines'
-    TIMEFRAME = '15m'
-    SESSION_UTC_HOURS = {
-        'london': (7, 12),     # 07:00–12:00 UTC
-        'newyork': (13, 20)    # 13:00–20:00 UTC
-    }
-    
-    # Demo fetch: generate simulated 15m candle data
-    def fetch_ohlcv_demo(symbol, trading_date, interval=TIMEFRAME, limit=50):
-        candles = []
-        start_dt = datetime(trading_date.year, trading_date.month, trading_date.day)
-        prev_close = 100.0 + random.uniform(-5, 5)
-        for i in range(limit):
-            open_time = int((start_dt.timestamp() + i * 15 * 60) * 1000)
-            open_price = prev_close
-            delta = random.uniform(-1, 1)
-            close_price = open_price + delta
-            high_price = max(open_price, close_price) + random.uniform(0, 0.5)
-            low_price = min(open_price, close_price) - random.uniform(0, 0.5)
-            volume = random.uniform(100, 1000)
-            close_time = open_time + 15 * 60 * 1000
-            candles.append([open_time, open_price, high_price, low_price, close_price, volume, close_time])
-            prev_close = close_price
-        return candles
-    
-    # Live fetch function
-    def fetch_ohlcv(symbol, interval=TIMEFRAME, limit=50):
-        params = {'symbol': symbol, 'interval': interval, 'limit': limit}
-        r = requests.get(API_URL, params=params)
-        return r.json() if r.status_code == 200 else []
-    
-    def is_swing_high(i, highs):
-        return highs[i-1] < highs[i] and highs[i+1] < highs[i]
-    
-    def is_swing_low(i, lows):
-        return lows[i-1] > lows[i] and lows[i+1] > lows[i]
-    
-    def detect_flip(candles, symbol):
-        highs = [float(c[2]) for c in candles]
-        lows = [float(c[3]) for c in candles]
-        closes = [float(c[4]) for c in candles]
-        timestamps = [int(c[0]) for c in candles]
-    
-        last_lh_idx, last_lh = None, None
-        last_hl_idx, last_hl = None, None
-    
-        st.write(f"Processing {symbol}:")
-        st.write("Highs (first 5):", [round(h,2) for h in highs[:5]])
-        st.write("Lows (first 5):", [round(l,2) for l in lows[:5]])
-        st.write("Closes (first 5):", [round(c,2) for c in closes[:5]])
-    
-        for i in range(2, len(highs)-2):
-            if is_swing_high(i, highs):
-                last_lh_idx, last_lh = i, highs[i]
-            if is_swing_low(i, lows):
-                last_hl_idx, last_hl = i, lows[i]
-    
-        flip = None
-        delta = 0.01
-        if last_lh_idx and closes[-1] > last_lh - delta:
-            flip = {
-                'asset': symbol,
-                'flip_type': 'BULLISH',
-                'flip_price': round(closes[-1],2),
-                'flip_time': datetime.utcfromtimestamp(timestamps[-1]/1000).strftime('%H:%M'),
-                'timestamp': timestamps[-1] // 1000
-            }
-        elif last_hl_idx and closes[-1] < last_hl + delta:
-            flip = {
-                'asset': symbol,
-                'flip_type': 'BEARISH',
-                'flip_price': round(closes[-1],2),
-                'flip_time': datetime.utcfromtimestamp(timestamps[-1]/1000).strftime('%H:%M'),
-                'timestamp': timestamps[-1] // 1000
-            }
-        st.write(f"Last LH: {round(last_lh,2) if last_lh is not None else 'None'}, Last HL: {round(last_hl,2) if last_hl is not None else 'None'}, Latest Close: {round(closes[-1],2)}")
-        return flip
-    
-    def is_in_session():
-        if demo_mode:
-            return True
-        now = datetime.utcnow()
-        hour = now.hour
-        return (SESSION_UTC_HOURS['london'][0] <= hour < SESSION_UTC_HOURS['london'][1]) or \
-               (SESSION_UTC_HOURS['newyork'][0] <= hour < SESSION_UTC_HOURS['newyork'][1])
-    
-    all_flips = []
-    if is_in_session():
-        for asset in ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'LINKUSDT', 'SUIUSDT', 'ONDOUSDT', 'CRVUSDT', 'CVXUSDT', 'FARTUSDT']:
-            if demo_mode and demo_date:
-                candles = fetch_ohlcv_demo(asset, demo_date)
-            else:
-                candles = fetch_ohlcv(asset)
-            if candles:
-                flip = detect_flip(candles, asset)
-                if flip:
-                    all_flips.append(flip)
-    
-    if all_flips:
-        st.subheader("Detected Flips")
-        st.write(all_flips)
-    else:
-        st.info("No flips detected at this time.")
-
-# ---------------------------------------------------
 # Navigation: Single Radio Call
 # ---------------------------------------------------
 mode = st.sidebar.radio("Select App Mode", 
-    ["Trade Journal & Checklist", "Asset Data", "Strategy", "Mindset Dashboard", "Flip Tracker"])
+    ["Trade Journal & Checklist", "Asset Data", "Strategy", "Mindset Dashboard"])
 
 if mode == "Trade Journal & Checklist":
     trade_journal_mode()
@@ -657,5 +537,3 @@ elif mode == "Strategy":
     strategy_mode()
 elif mode == "Mindset Dashboard":
     mindset_mode()
-elif mode == "Flip Tracker":
-    flip_tracker_mode()
