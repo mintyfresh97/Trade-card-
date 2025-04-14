@@ -364,7 +364,7 @@ def asset_data_mode():
                     updated_levels["chart_path"] = filename
                 save_levels_for_asset(asset_display, updated_levels)
                 st.success("Levels and chart updated!")
-                st.experimental_rerun()
+                # Removed st.experimental_rerun() to avoid errors; the new levels will appear on next execution.
         st.subheader(f"{asset_symbol} Daily Analysis")
         chart_filename = levels.get("chart_path", "")
         if chart_filename:
@@ -561,7 +561,7 @@ def mindset_mode():
                 log_df.reset_index(drop=True, inplace=True)
                 log_df.to_csv(csv_file, index=False)
                 st.success(f"Log entry at index {row_to_delete} was deleted successfully!")
-                st.experimental_rerun()
+                # Removed st.experimental_rerun() to avoid errors
     else:
         st.info("No logs found yet.")
 
@@ -595,5 +595,3 @@ elif mode == "Mindset Dashboard":
     mindset_mode()
 elif mode == "Trade Journal & Checklist":
     trade_journal_mode()
-
-
