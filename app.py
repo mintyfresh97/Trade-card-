@@ -503,7 +503,9 @@ def mindset_mode():
                     "Checklist", "Followed Plan", "Impact", "Reflection"
                 ]).to_csv(csv_file, index=False)
             df = pd.read_csv(csv_file)
-            df = df.append(new_row, ignore_index=True)
+            # Replace the deprecated append() with pd.concat
+            new_row_df = pd.DataFrame([new_row])
+            df = pd.concat([df, new_row_df], ignore_index=True)
             df.to_csv(csv_file, index=False)
             st.success("Mindset logged!")
     with col2:
