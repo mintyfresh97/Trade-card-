@@ -1,4 +1,6 @@
 import streamlit as st
+st.set_page_config(page_title="Trade Journal & PnL Dashboard", layout="wide")
+
 import requests
 import os
 import io
@@ -58,10 +60,8 @@ if "page" in params:
 # =============================================================================
 
 # ---------------------------------------------------
-# Page Configuration and Directory Setup
+# Page Configuration and Directory Setup (already set above)
 # ---------------------------------------------------
-st.set_page_config(page_title="Trade Journal & PnL Dashboard", layout="wide")
-
 # Create directories if they don't exist.
 JOURNAL_CHART_DIR = "journal_charts"
 if not os.path.exists(JOURNAL_CHART_DIR):
