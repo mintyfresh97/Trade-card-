@@ -12,6 +12,51 @@ import numpy as np
 import plotly.express as px
 from streamlit_autorefresh import st_autorefresh
 
+# =============================================================================
+# QUERY-PARAMETER BASED SUB-PAGES
+# =============================================================================
+params = st.experimental_get_query_params()
+if "page" in params:
+    page = params["page"][0]
+    if page == "orderbook":
+        st.title("Order Book Dashboard")
+        st.write("Fetching KuCoin Level‑2 order book data...")
+        def fetch_orderbook(symbol: str):
+            """
+            Fetch the level 2 order book data for a given asset symbol.
+            Assumes trading pair is symbol-USDT.
+            (You can update the endpoint if needed, e.g. to /level2_20)
+            """
+            api_url = f"https://api.kucoin.com/api/v1/market/orderbook/level2?symbol={symbol}-USDT"
+            try:
+                response = requests.get(api_url, timeout=5)
+                response.raise_for_status()
+                return response.json()
+            except requests.RequestException as e:
+                return {"error": str(e), "symbol": symbol}
+        ASSETS = ["BTC", "ETH", "ADA", "SOL", "LINK", "XRP", "ONDO", "SUI", "CVX", "CRV", "FARTCOIN"]
+        orderbooks = {}
+        for asset in ASSETS:
+            orderbooks[asset] = fetch_orderbook(asset)
+        st.json(orderbooks)
+        st.stop()
+    elif page == "buy":
+        st.title("Where and How to Buy")
+        st.write("Coming soon!")
+        st.stop()
+    elif page == "sell":
+        st.title("Where to Sell")
+        st.write("Coming soon!")
+        st.stop()
+    elif page == "market_sell":
+        st.title("Selling the Market (How/Where to Sell)")
+        st.write("Coming soon!")
+        st.stop()
+
+# =============================================================================
+# MAIN APP STARTS BELOW
+# =============================================================================
+
 # ---------------------------------------------------
 # Page Configuration and Directory Setup
 # ---------------------------------------------------
@@ -30,7 +75,6 @@ if not os.path.exists(CHARTS_DIR):
 # ---------------------------------------------------
 conn = sqlite3.connect("levels_data.db", check_same_thread=False)
 cursor = conn.cursor()
-
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS asset_levels (
     asset TEXT PRIMARY KEY,
@@ -179,7 +223,7 @@ def orderbook_dashboard():
     st.json(orderbooks)
 
 # ---------------------------------------------------
-# 1) Trade Journal & Checklist Mode (Dark Mode, 2-Column Layout)
+# 1) Trade Journal & Checklist Mode
 # ---------------------------------------------------
 def trade_journal_mode():
     st.markdown("""
@@ -251,7 +295,7 @@ def trade_journal_mode():
             st.success("Chart uploaded and auto-linked to journal entry.")
 
 # ---------------------------------------------------
-# 2) Asset Data Mode (Refined Look with Stylish Banner)
+# 2) Asset Data Mode (with Trade Setup Grading and Additional Resources on the LEFT)
 # ---------------------------------------------------
 def asset_data_mode():
     st.markdown("""
@@ -283,6 +327,8 @@ def asset_data_mode():
     
     st_autorefresh(interval=30000, limit=100, key="autorefresh")
     col1, col2 = st.columns([1, 2])
+    
+    # --- LEFT COLUMN: Asset Overview and Additional Resources ---
     with col1:
         display_names = list(coinpaprika_ids.keys())
         asset_display = st.selectbox("Select Asset", display_names)
@@ -326,6 +372,14 @@ def asset_data_mode():
                 else:
                     vol_score = (ratio - 0.5) / (2.0 - 0.5) * 10.0
         st.markdown(f"**Volume Strength Score:** {vol_score:.1f} / 10")
+        st.markdown("---")
+        st.markdown("#### Additional Resources")
+        st.markdown(
+            "[Where and How to Buy](?page=buy)  |  [Where to Sell](?page=sell)  |  [Selling the Market](?page=market_sell)",
+            unsafe_allow_html=True
+        )
+    
+    # --- RIGHT COLUMN: Chart Upload / Editing and Trade Setup Grading ---
     with col2:
         st.subheader("Edit Key Levels / Upload Chart")
         with st.expander("Modify Levels & Chart", expanded=True):
@@ -364,7 +418,20 @@ def asset_data_mode():
                     updated_levels["chart_path"] = filename
                 save_levels_for_asset(asset_display, updated_levels)
                 st.success("Levels and chart updated!")
-                # Removed st.experimental_rerun() to avoid errors; the new levels will appear on next execution.
+        with st.expander("Trade Setup Grading (Out of 10)", expanded=True):
+            tsg1 = st.slider("Structure Break Clear?", 0, 2, 0)
+            tsg2 = st.slider("Return to Key Zone?", 0, 2, 0)
+            tsg3 = st.slider("Entry Signal Quality", 0, 2, 0)
+            tsg4 = st.slider("Risk-Reward > 2:1", 0, 1, 0)
+            tsg5 = st.slider("No Emotional Bias", 0, 1, 0)
+            tsg6 = st.slider("Correlation Confirms Bias", 0, 1, 0)
+            tsg7 = st.slider("Used Journal or Checklist", 0, 1, 0)
+            trade_setup_score = tsg1 + tsg2 + tsg3 + tsg4 + tsg5 + tsg6 + tsg7
+            st.write(f"**Setup Score:** {trade_setup_score} / 10")
+            if trade_setup_score >= 7:
+                st.success("TRADE VALID ✅")
+            else:
+                st.error("NO TRADE ❌ - Wait for better setup")
         st.subheader(f"{asset_symbol} Daily Analysis")
         chart_filename = levels.get("chart_path", "")
         if chart_filename:
@@ -456,7 +523,7 @@ def strategy_mode():
         st.info("No trade log found yet.")
 
 # ---------------------------------------------------
-# 4) Mindset Dashboard Mode (Dark Mode)
+# 4) Mindset Dashboard Mode (with Order Book Sub-Link)
 # ---------------------------------------------------
 def mindset_mode():
     st.markdown("""
@@ -503,7 +570,6 @@ def mindset_mode():
                     "Checklist", "Followed Plan", "Impact", "Reflection"
                 ]).to_csv(csv_file, index=False)
             df = pd.read_csv(csv_file)
-            # Replace deprecated append with pd.concat
             new_row_df = pd.DataFrame([new_row])
             df = pd.concat([df, new_row_df], ignore_index=True)
             df.to_csv(csv_file, index=False)
@@ -548,26 +614,10 @@ def mindset_mode():
     csv_file = "mindset_log.csv"
     if os.path.exists(csv_file):
         log_df = pd.read_csv(csv_file)
-        # Display the full log for easier deletion
         st.dataframe(log_df)
-        # --- Delete Log Entry Section ---
-        if not log_df.empty:
-            st.markdown("### Delete a Log Entry")
-            st.info("Use the row index (the leftmost column in the table) to select which entry to remove.")
-            row_indices = list(range(len(log_df)))
-            row_to_delete = st.selectbox("Select Row Index to Delete", row_indices)
-            if st.button("Delete Selected Row"):
-                log_df.drop(row_to_delete, inplace=True)
-                log_df.reset_index(drop=True, inplace=True)
-                log_df.to_csv(csv_file, index=False)
-                st.success(f"Log entry at index {row_to_delete} was deleted successfully!")
-                # Removed st.experimental_rerun() to avoid errors
     else:
         st.info("No logs found yet.")
-
-    # ---------------------------------------------------
-    # Order Book Sub-Link Under Mindset Dashboard
-    # ---------------------------------------------------
+    # --- Order Book Sub-Link Under Mindset Dashboard ---
     st.markdown("---")
     st.markdown("#### Sub-Feature: Order Book Dashboard")
     st.markdown("Click the button below to fetch and view the KuCoin level‑2 order book data for selected assets.")
