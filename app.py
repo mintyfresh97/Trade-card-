@@ -503,7 +503,7 @@ def mindset_mode():
                     "Checklist", "Followed Plan", "Impact", "Reflection"
                 ]).to_csv(csv_file, index=False)
             df = pd.read_csv(csv_file)
-            # Replace the deprecated append() with pd.concat
+            # Replace deprecated append with pd.concat
             new_row_df = pd.DataFrame([new_row])
             df = pd.concat([df, new_row_df], ignore_index=True)
             df.to_csv(csv_file, index=False)
@@ -548,7 +548,20 @@ def mindset_mode():
     csv_file = "mindset_log.csv"
     if os.path.exists(csv_file):
         log_df = pd.read_csv(csv_file)
-        st.dataframe(log_df.tail(5))
+        # Display the full log for easier deletion
+        st.dataframe(log_df)
+        # --- Delete Log Entry Section ---
+        if not log_df.empty:
+            st.markdown("### Delete a Log Entry")
+            st.info("Use the row index (the leftmost column in the table) to select which entry to remove.")
+            row_indices = list(range(len(log_df)))
+            row_to_delete = st.selectbox("Select Row Index to Delete", row_indices)
+            if st.button("Delete Selected Row"):
+                log_df.drop(row_to_delete, inplace=True)
+                log_df.reset_index(drop=True, inplace=True)
+                log_df.to_csv(csv_file, index=False)
+                st.success(f"Log entry at index {row_to_delete} was deleted successfully!")
+                st.experimental_rerun()
     else:
         st.info("No logs found yet.")
 
@@ -582,3 +595,5 @@ elif mode == "Mindset Dashboard":
     mindset_mode()
 elif mode == "Trade Journal & Checklist":
     trade_journal_mode()
+
+
