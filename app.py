@@ -17,7 +17,7 @@ from streamlit_autorefresh import st_autorefresh
 # =============================================================================
 # QUERY-PARAMETER BASED SUB-PAGES
 # =============================================================================
-params = st.experimental_get_query_params()
+params = st.query_params()
 if "page" in params:
     page = params["page"][0]
     if page == "orderbook":
