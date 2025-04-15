@@ -17,9 +17,9 @@ from streamlit_autorefresh import st_autorefresh
 # =============================================================================
 # QUERY-PARAMETER BASED SUB-PAGES
 # =============================================================================
-try:
+if hasattr(st, "query_params"):
     params = st.query_params()
-except AttributeError:
+else:
     params = st.experimental_get_query_params()
 
 if "page" in params:
@@ -64,7 +64,7 @@ if "page" in params:
 # =============================================================================
 
 # ---------------------------------------------------
-# Page Configuration and Directory Setup (already set above)
+# Directory Setup
 # ---------------------------------------------------
 JOURNAL_CHART_DIR = "journal_charts"
 if not os.path.exists(JOURNAL_CHART_DIR):
