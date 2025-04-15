@@ -15,12 +15,9 @@ import plotly.express as px
 from streamlit_autorefresh import st_autorefresh
 
 # =============================================================================
-# QUERY-PARAMETER BASED SUB-PAGES
+# QUERY-PARAMETER BASED SUB-PAGES (using experimental_get_query_params)
 # =============================================================================
-if "query_params" in dir(st):
-    params = st.query_params()
-else:
-    params = st.experimental_get_query_params()
+params = st.experimental_get_query_params()
 
 if "page" in params:
     page = params["page"][0]
