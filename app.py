@@ -17,7 +17,7 @@ from streamlit_autorefresh import st_autorefresh
 # =============================================================================
 # QUERY-PARAMETER BASED SUB-PAGES
 # =============================================================================
-if hasattr(st, "query_params"):
+if "query_params" in dir(st):
     params = st.query_params()
 else:
     params = st.experimental_get_query_params()
