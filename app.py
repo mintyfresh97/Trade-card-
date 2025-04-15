@@ -1,4 +1,6 @@
 import streamlit as st
+st.set_page_config(page_title="Trade Journal & PnL Dashboard", layout="wide")
+
 import requests
 import os
 import io
@@ -12,11 +14,58 @@ import numpy as np
 import plotly.express as px
 from streamlit_autorefresh import st_autorefresh
 
-# ---------------------------------------------------
-# Page Configuration and Directory Setup
-# ---------------------------------------------------
-st.set_page_config(page_title="Trade Journal & PnL Dashboard", layout="wide")
+# =============================================================================
+# QUERY-PARAMETER BASED SUB-PAGES
+# =============================================================================
+try:
+    params = st.query_params()
+except AttributeError:
+    params = st.experimental_get_query_params()
 
+if "page" in params:
+    page = params["page"][0]
+    if page == "orderbook":
+        st.title("Order Book Dashboard")
+        st.write("Fetching KuCoin Level‑2 order book data...")
+        def fetch_orderbook(symbol: str):
+            """
+            Fetch the level 2 order book data for a given asset symbol.
+            Assumes trading pair is symbol-USDT.
+            (You can update the endpoint if needed, e.g. to /level2_20)
+            """
+            api_url = f"https://api.kucoin.com/api/v1/market/orderbook/level2?symbol={symbol}-USDT"
+            try:
+                response = requests.get(api_url, timeout=5)
+                response.raise_for_status()
+                return response.json()
+            except requests.RequestException as e:
+                return {"error": str(e), "symbol": symbol}
+        ASSETS = ["BTC", "ETH", "ADA", "SOL", "LINK", "XRP", "ONDO", "SUI", "CVX", "CRV", "FARTCOIN"]
+        orderbooks = {}
+        for asset in ASSETS:
+            orderbooks[asset] = fetch_orderbook(asset)
+        st.json(orderbooks)
+        st.stop()
+    elif page == "buy":
+        st.title("Where and How to Buy")
+        st.write("Coming soon!")
+        st.stop()
+    elif page == "sell":
+        st.title("Where to Sell")
+        st.write("Coming soon!")
+        st.stop()
+    elif page == "market_sell":
+        st.title("Selling the Market (How/Where to Sell)")
+        st.write("Coming soon!")
+        st.stop()
+
+# =============================================================================
+# MAIN APP STARTS BELOW
+# =============================================================================
+
+# ---------------------------------------------------
+# Page Configuration and Directory Setup (already set above)
+# ---------------------------------------------------
 # Create directories if they don't exist.
 JOURNAL_CHART_DIR = "journal_charts"
 if not os.path.exists(JOURNAL_CHART_DIR):
@@ -30,7 +79,6 @@ if not os.path.exists(CHARTS_DIR):
 # ---------------------------------------------------
 conn = sqlite3.connect("levels_data.db", check_same_thread=False)
 cursor = conn.cursor()
-
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS asset_levels (
     asset TEXT PRIMARY KEY,
@@ -179,7 +227,7 @@ def orderbook_dashboard():
     st.json(orderbooks)
 
 # ---------------------------------------------------
-# 1) Trade Journal & Checklist Mode (Dark Mode, 2-Column Layout)
+# 1) Trade Journal & Checklist Mode
 # ---------------------------------------------------
 def trade_journal_mode():
     st.markdown("""
@@ -251,7 +299,7 @@ def trade_journal_mode():
             st.success("Chart uploaded and auto-linked to journal entry.")
 
 # ---------------------------------------------------
-# 2) Asset Data Mode (Refined Look with Stylish Banner)
+# 2) Asset Data Mode (with Trade Setup Grading and Additional Resources on the LEFT)
 # ---------------------------------------------------
 def asset_data_mode():
     st.markdown("""
@@ -283,6 +331,8 @@ def asset_data_mode():
     
     st_autorefresh(interval=30000, limit=100, key="autorefresh")
     col1, col2 = st.columns([1, 2])
+    
+    # --- LEFT COLUMN: Asset Overview and Additional Resources ---
     with col1:
         display_names = list(coinpaprika_ids.keys())
         asset_display = st.selectbox("Select Asset", display_names)
@@ -326,6 +376,14 @@ def asset_data_mode():
                 else:
                     vol_score = (ratio - 0.5) / (2.0 - 0.5) * 10.0
         st.markdown(f"**Volume Strength Score:** {vol_score:.1f} / 10")
+        st.markdown("---")
+        st.markdown("#### Additional Resources")
+        st.markdown(
+            "[Where and How to Buy](?page=buy)  |  [Where to Sell](?page=sell)  |  [Selling the Market](?page=market_sell)",
+            unsafe_allow_html=True
+        )
+    
+    # --- RIGHT COLUMN: Chart Upload / Editing and Trade Setup Grading ---
     with col2:
         st.subheader("Edit Key Levels / Upload Chart")
         with st.expander("Modify Levels & Chart", expanded=True):
@@ -364,6 +422,20 @@ def asset_data_mode():
                     updated_levels["chart_path"] = filename
                 save_levels_for_asset(asset_display, updated_levels)
                 st.success("Levels and chart updated!")
+        with st.expander("Trade Setup Grading (Out of 10)", expanded=True):
+            tsg1 = st.slider("Structure Break Clear?", 0, 2, 0)
+            tsg2 = st.slider("Return to Key Zone?", 0, 2, 0)
+            tsg3 = st.slider("Entry Signal Quality", 0, 2, 0)
+            tsg4 = st.slider("Risk-Reward > 2:1", 0, 1, 0)
+            tsg5 = st.slider("No Emotional Bias", 0, 1, 0)
+            tsg6 = st.slider("Correlation Confirms Bias", 0, 1, 0)
+            tsg7 = st.slider("Used Journal or Checklist", 0, 1, 0)
+            trade_setup_score = tsg1 + tsg2 + tsg3 + tsg4 + tsg5 + tsg6 + tsg7
+            st.write(f"**Setup Score:** {trade_setup_score} / 10")
+            if trade_setup_score >= 7:
+                st.success("TRADE VALID ✅")
+            else:
+                st.error("NO TRADE ❌ - Wait for better setup")
         st.subheader(f"{asset_symbol} Daily Analysis")
         chart_filename = levels.get("chart_path", "")
         if chart_filename:
@@ -398,7 +470,6 @@ def strategy_mode():
             "RR Ratio": [rr_logged],
             "Outcome": [trade_result],
             "Notes": [notes],
-            # Optionally, you could add a Chart column if needed.
         }
         df_new = pd.DataFrame(trade_data)
         log_path = "trade_log.csv"
@@ -456,7 +527,7 @@ def strategy_mode():
         st.info("No trade log found yet.")
 
 # ---------------------------------------------------
-# 4) Mindset Dashboard Mode (Dark Mode)
+# 4) Mindset Dashboard Mode (with Order Book Sub-Link)
 # ---------------------------------------------------
 def mindset_mode():
     st.markdown("""
@@ -548,21 +619,9 @@ def mindset_mode():
     if os.path.exists(csv_file):
         log_df = pd.read_csv(csv_file)
         st.dataframe(log_df)
-        if not log_df.empty:
-            st.markdown("### Delete a Log Entry")
-            st.info("Use the row index (the leftmost column in the table) to select which entry to remove.")
-            row_indices = list(range(len(log_df)))
-            row_to_delete = st.selectbox("Select Row Index to Delete", row_indices)
-            if st.button("Delete Selected Row"):
-                log_df.drop(row_to_delete, inplace=True)
-                log_df.reset_index(drop=True, inplace=True)
-                log_df.to_csv(csv_file, index=False)
-                st.success(f"Log entry at index {row_to_delete} was deleted successfully!")
     else:
         st.info("No logs found yet.")
-    # ---------------------------------------------------
-    # Order Book Sub-Link Under Mindset Dashboard
-    # ---------------------------------------------------
+    # --- Order Book Sub-Link Under Mindset Dashboard ---
     st.markdown("---")
     st.markdown("#### Sub-Feature: Order Book Dashboard")
     st.markdown("Click the button below to fetch and view the KuCoin level‑2 order book data for selected assets.")
@@ -570,52 +629,7 @@ def mindset_mode():
         orderbook_dashboard()
 
 # ---------------------------------------------------
-# 5) Edit Journal Entry (New Mode to Update Already Logged Data)
-# ---------------------------------------------------
-def edit_trade_journal_entry():
-    st.title("Edit Trade Journal Entry")
-    log_path = "trade_log.csv"
-    if os.path.exists(log_path):
-        df_trade = pd.read_csv(log_path)
-        if df_trade.empty:
-            st.info("No trade entries available to edit.")
-            return
-        # Create a dropdown option list using Date, Asset and Outcome
-        options = [f"{row['Date']} - {row['Asset']} - {row['Outcome']}" for _, row in df_trade.iterrows()]
-        selected_option = st.selectbox("Select a trade to edit", options)
-        selected_index = options.index(selected_option)
-        selected_trade = df_trade.iloc[selected_index]
-        st.markdown("### Update Fields (pre-populated with saved values)")
-        asset = st.text_input("Asset", value=selected_trade["Asset"])
-        strategy = st.text_input("Strategy", value=selected_trade["Strategy"])
-        rr_ratio = st.text_input("RR Ratio", value=selected_trade["RR Ratio"])
-        outcome = st.selectbox("Outcome", options=["Win", "Loss", "Break-even"],
-                               index=["Win", "Loss", "Break-even"].index(selected_trade["Outcome"]) if selected_trade["Outcome"] in ["Win", "Loss", "Break-even"] else 0)
-        notes = st.text_area("Notes", value=selected_trade["Notes"])
-        st.markdown("If you want to update the chart, upload a new file below (optional).")
-        new_chart_file = st.file_uploader("New Chart Image", type=["png", "jpg", "jpeg"], key="edit_chart")
-        if st.button("Update Trade Journal Entry"):
-            df_trade.at[selected_index, "Asset"] = asset
-            df_trade.at[selected_index, "Strategy"] = strategy
-            df_trade.at[selected_index, "RR Ratio"] = rr_ratio
-            df_trade.at[selected_index, "Outcome"] = outcome
-            df_trade.at[selected_index, "Notes"] = notes
-            if new_chart_file is not None:
-                # Save new chart using asset and original trade date as filename
-                trade_date = selected_trade["Date"]
-                asset_sym = asset.strip().upper()
-                chart_path = os.path.join(JOURNAL_CHART_DIR, f"{asset_sym}_{trade_date}.png")
-                with open(chart_path, "wb") as f:
-                    f.write(new_chart_file.getvalue())
-                # Optionally, add/update a Chart column in df_trade if you wish
-                df_trade.at[selected_index, "Chart"] = chart_path
-            df_trade.to_csv(log_path, index=False)
-            st.success("Trade Journal Entry updated!")
-    else:
-        st.info("No trade log found.")
-
-# ---------------------------------------------------
-# Navigation (Updated with New Mode)
+# Navigation (Reordered)
 # ---------------------------------------------------
 mode = st.sidebar.radio(
     "Select App Mode", 
@@ -623,8 +637,7 @@ mode = st.sidebar.radio(
         "Asset Data", 
         "Strategy", 
         "Mindset Dashboard", 
-        "Trade Journal & Checklist",
-        "Edit Journal Entry"
+        "Trade Journal & Checklist"
     ]
 )
 
@@ -636,5 +649,3 @@ elif mode == "Mindset Dashboard":
     mindset_mode()
 elif mode == "Trade Journal & Checklist":
     trade_journal_mode()
-elif mode == "Edit Journal Entry":
-    edit_trade_journal_entry()
