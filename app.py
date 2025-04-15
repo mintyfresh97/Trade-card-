@@ -66,7 +66,6 @@ if "page" in params:
 # ---------------------------------------------------
 # Page Configuration and Directory Setup (already set above)
 # ---------------------------------------------------
-# Create directories if they don't exist.
 JOURNAL_CHART_DIR = "journal_charts"
 if not os.path.exists(JOURNAL_CHART_DIR):
     os.makedirs(JOURNAL_CHART_DIR)
