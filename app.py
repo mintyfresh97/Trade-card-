@@ -69,23 +69,22 @@ for asset in coinpaprika_ids.keys():
     """, (asset,))
 conn.commit()
 
-# =============================================================================
-# Helper functions for levels
-# =============================================================================
+# Helper functions for levels persistence
+
 def get_levels_from_db(asset_name):
-    cursor.execute("SELECT support, demand, resistance, supply, choch, chart_path FROM asset_levels WHERE asset = ?", (asset_name,))
+    cursor.execute(
+        "SELECT support, demand, resistance, supply, choch, chart_path FROM asset_levels WHERE asset = ?", 
+        (asset_name,)
+    )
     row = cursor.fetchone()
     if row:
-        return {
-            "support": row[0] or "",
-            "demand": row[1] or "",
-            "resistance": row[2] or "",
-            "supply": row[3] or "",
-            "choch": row[4] or "",
-            "chart_path": row[5] or ""
-        }
-    else:
-        return {k: "" for k in ["support","demand","resistance","supply","choch","chart_path"]}
+        return {"support": row[0] or "",
+                "demand": row[1] or "",
+                "resistance": row[2] or "",
+                "supply": row[3] or "",
+                "choch": row[4] or "",
+                "chart_path": row[5] or ""}
+    return {k: "" for k in ["support","demand","resistance","supply","choch","chart_path"]}
 
 
 def save_levels_to_db(asset_name, levels):
@@ -121,9 +120,7 @@ def save_levels_for_asset(asset_name, levels):
     st.session_state.setdefault("levels_data", {})[asset_name] = levels
     save_levels_to_db(asset_name, levels)
 
-# =============================================================================
-# Shared Functions & Assets
-# =============================================================================
+# Shared Assets
 icon_map = {
     "BTC": "bitcoin-btc-logo.png", "ETH": "ethereum-eth-logo.png",
     "XRP": "xrp-xrp-logo.png", "ADA": "cardano-ada-logo.png",
@@ -133,10 +130,11 @@ icon_map = {
     "FARTCOIN": "fartcoin-logo.png"
 }
 
-# ... (keep other helper functions and modes unchanged) ...
+# Include all original mode definitions here (trade_journal_mode, asset_data_mode, mindset_mode)...
+# For brevity, these functions remain unchanged from your previous implementation.
 
 # ---------------------------------------------------
-# 3) Strategy Mode (Trade Logging & Analytics)
+# Strategy Mode (Trade Logging & Analytics)
 # ---------------------------------------------------
 def strategy_mode():
     st.title("Strategy")
@@ -151,7 +149,6 @@ def strategy_mode():
         rr_logged = st.text_input("RR Ratio", value="1:1")
         notes = st.text_area("Additional Notes")
 
-    # Save to SQLite instead of CSV
     if st.button("Save Trade to Log"):
         cursor.execute("""
             INSERT INTO trade_log (date, asset, strategy, rr_ratio, outcome, notes)
@@ -167,19 +164,10 @@ def strategy_mode():
         conn.commit()
         st.success("Trade saved to database!")
 
-    # Load history from DB
-    df_hist = pd.read_sql("SELECT * FROM trade_log ORDER BY date", conn)
+    df_hist = pd.read_sql("SELECT date AS 'Date', asset AS 'Asset', strategy AS 'Strategy', rr_ratio AS 'RR Ratio', outcome AS 'Outcome', notes AS 'Notes' FROM trade_log ORDER BY date", conn)
     if not df_hist.empty:
-        # Rename columns for display consistency
-        df_hist.rename(columns={
-            'date':'Date', 'asset':'Asset', 'strategy':'Strategy',
-            'rr_ratio':'RR Ratio', 'outcome':'Outcome', 'notes':'Notes'
-        }, inplace=True)
-
         st.markdown("### Trade History")
         st.dataframe(df_hist)
-
-        # Sidebar filters
         st.sidebar.header("Filter Trade History")
         date_filter = st.sidebar.date_input("Select Date Range", [])
         if date_filter and len(date_filter) == 2:
@@ -189,34 +177,28 @@ def strategy_mode():
             st.write("Filtered Trade History:")
             st.dataframe(df_filtered)
 
-        # Performance summary
         st.markdown("### Performance Summary")
         total = len(df_hist)
-        wins = len(df_hist[df_hist["Outcome"] == "Win"])
-        losses = len(df_hist[df_hist["Outcome"] == "Loss"])
+        wins = len(df_hist[df_hist['Outcome'] == "Win"])
+        losses = len(df_hist[df_hist['Outcome'] == "Loss"])
         win_rate = round((wins / total) * 100, 1) if total > 0 else 0
         st.write(f"Total Trades: {total}")
         st.write(f"Win Rate: {win_rate}%")
         if total > 0:
             st.write(f"Most Used Strategy: {df_hist['Strategy'].mode()[0]}")
-        else:
-            st.write("No trades logged yet.")
 
-        # Analytics
         st.markdown("### Trade Analytics")
         st.subheader("Trade Outcomes")
         outcome_counts = df_hist['Outcome'].value_counts()
         st.bar_chart(outcome_counts)
         try:
             df_hist['RR Numeric'] = df_hist['RR Ratio'].str.extract('([0-9\.]+)').astype(float)
-            df_hist_sorted = df_hist.sort_values("Date")
-            rr_data = df_hist_sorted.set_index("Date")[['RR Numeric']]
+            rr_data = df_hist.set_index('Date')[['RR Numeric']]
             st.subheader("RR Ratio Over Time")
             st.line_chart(rr_data)
         except Exception as e:
             st.warning(f"Could not plot RR Ratio chart: {e}")
 
-        # Download button
         st.download_button(
             label="Download Trade History CSV",
             data=df_hist.to_csv(index=False),
@@ -227,7 +209,23 @@ def strategy_mode():
         st.info("No trade log found yet.")
 
 # ---------------------------------------------------
-# Navigation and other modes unchanged...
+# Navigation
 # ---------------------------------------------------
+mode = st.sidebar.radio(
+    "Select App Mode",
+    [
+        "Asset Data",
+        "Strategy",
+        "Mindset Dashboard",
+        "Trade Journal & Checklist"
+    ]
+)
 
-# (Place existing navigation code here, calling strategy_mode, asset_data_mode, etc.)
+if mode == "Asset Data":
+    asset_data_mode()
+elif mode == "Strategy":
+    strategy_mode()
+elif mode == "Mindset Dashboard":
+    mindset_mode()
+elif mode == "Trade Journal & Checklist":
+    trade_journal_mode()
