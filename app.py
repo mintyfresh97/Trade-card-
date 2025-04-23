@@ -14,7 +14,7 @@ from streamlit_autorefresh import st_autorefresh
 # =============================================================================
 # QUERY-PARAMETER BASED SUB-PAGES
 # =============================================================================
-params = st.experimental_get_query_params()
+params = st.query_params
 if "page" in params:
     page = params["page"][0]
     if page == "orderbook":
@@ -402,3 +402,4 @@ def strategy_mode():
         st.write(f"Win Rate: {win_rate}%")
         if total > 0:
             st.write(f"Most Used Strategy: {df_hist['Strategy'].mode()[0]}")
+
