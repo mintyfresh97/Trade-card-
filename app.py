@@ -395,4 +395,10 @@ def strategy_mode():
         st.dataframe(df_hist)
         st.markdown("### Performance Summary")
         total = len(df_hist)
-        wins = len(df_hist[df_hist.Outcome == "Win"]```
+        wins = len(df_hist[df_hist['Outcome'] == 'Win'])
+        losses = len(df_hist[df_hist['Outcome'] == 'Loss'])
+        win_rate = round((wins / total) * 100, 1) if total > 0 else 0
+        st.write(f"Total Trades: {total}")
+        st.write(f"Win Rate: {win_rate}%")
+        if total > 0:
+            st.write(f"Most Used Strategy: {df_hist['Strategy'].mode()[0]}")
