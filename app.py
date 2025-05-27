@@ -9,7 +9,7 @@ import pandas as pd
 import numpy as np
 import re
 import pytesseract
-from streamlit_autorefresh import st_autorefresh
+
 
 # ---------------------------------------------------
 # Directory Setup
