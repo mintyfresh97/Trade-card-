@@ -76,11 +76,6 @@ def save_levels(asset, levels):
 
 
 
-def preprocess_image(image):
-    gray = image.convert("L")
-    threshold = 160
-    bw = gray.point(lambda x: 255 if x > threshold else 0, mode='1')
-    return bw.convert("RGB")
 
 def chart_analysis_mode():
     st.title("🧠 Chart Image Analyzer")
@@ -88,15 +83,9 @@ def chart_analysis_mode():
 
     if uploaded_img:
         raw_img = Image.open(uploaded_img)
-        img = preprocess_image(raw_img)
-        st.image(raw_img, caption="Original Uploaded Chart", use_column_width=True)
-        st.image(img, caption="Preprocessed for OCR", use_column_width=True)
+        img = raw_img
 
-        text = pytesseract.image_to_string(img)
-        st.markdown("---")
-        st.markdown("**🧾 OCR Text Extracted:**")
-        st.text(text[:1000])
-
+        
         analysis = []
         oi_vals = [float(x.replace("M","")) for x in re.findall(r'(\d+\.\d+)M', text)]
         funding_match = re.search(r"Funding Rate.*?([+-]?\d+\.\d+)", text)
