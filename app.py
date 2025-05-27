@@ -9,7 +9,7 @@ import pandas as pd
 import numpy as np
 import re
 import pytesseract
-
+from streamlit_autorefresh import st_autorefresh
 
 # ---------------------------------------------------
 # Directory Setup
@@ -86,6 +86,7 @@ def get_slope_of_region(img_array, region):
     return slope
 
 def chart_analysis_mode():
+    # Chart analyzer UI
     st.title("🧠 Chart Image Analyzer")
     uploaded_img = st.file_uploader("Upload Coinalyze/TV Chart", type=["png","jpg"])
 
@@ -210,3 +211,12 @@ def chart_analysis_mode():
             st.write("- **CVD shows net buying**, suggesting active buyers stepping in. Good if matched with bullish structure.")
         elif 'Net selling pressure' in ' '.join(analysis):
             st.write("- **CVD shows net selling**, suggesting passive buyers absorbing sell pressure or distribution occurring.")
+
+
+# ---------------------------------------------------------------
+# Streamlit Page Navigation (required to trigger UI)
+# ---------------------------------------------------------------
+mode = st.sidebar.radio("Mode", ["Chart Analyzer"])
+
+if mode == "Chart Analyzer":
+    chart_analysis_mode()
