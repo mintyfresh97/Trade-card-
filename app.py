@@ -74,13 +74,13 @@ def save_levels(asset, levels):
           levels["supply"],levels["choch"],levels["chart_path"]))
     conn.commit()
 
-import cv2
+
 
 def preprocess_image(image):
-    img = np.array(image)
-    gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-    _, thresh = cv2.threshold(gray, 160, 255, cv2.THRESH_BINARY)
-    return Image.fromarray(thresh)
+    gray = image.convert("L")
+    threshold = 160
+    bw = gray.point(lambda x: 255 if x > threshold else 0, mode='1')
+    return bw.convert("RGB")
 
 def chart_analysis_mode():
     st.title("🧠 Chart Image Analyzer")
