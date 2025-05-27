@@ -160,3 +160,51 @@ def chart_analysis_mode():
             ]
         }
         st.dataframe(pd.DataFrame(readiness_data))
+
+        st.markdown("---")
+        st.markdown("### 🧠 GPT-style Interpretation")
+        st.write("Based on the current analysis:")
+
+        st.markdown("---")
+        st.markdown("### 🧾 Full ChatGPT-style Breakdown")
+        cvd_note = ""
+        if 'Net selling pressure' in ' '.join(analysis):
+            cvd_note = "Sharp rebound, but still net negative → suggests passive buying, active sellers still exiting."
+        elif 'Net buying pressure' in ' '.join(analysis):
+            cvd_note = "Net buying stepping in — active demand returning."
+        else:
+            cvd_note = "Sideways CVD — market indecisive or passive."
+
+        price_comment = "Price: (Needs manual context — e.g., breakout, range, or deviation.)"
+        oi_comment = "Open Interest: Increasing (shows fresh participation)." if 'Open Interest is increasing' in ' '.join(analysis) else (
+            "Open Interest: Decreasing (positions closing, caution needed)." if 'Open Interest is declining' in ' '.join(analysis) else "Open Interest: Flat")
+        funding_comment = "Funding: Positive, climbing — long bias building." if 'long bias' in ' '.join(analysis) else (
+            "Funding: Dropping — shorts pressing." if 'short pressure' in ' '.join(analysis) else "Funding: Neutral")
+
+        st.markdown(f"""
+- **{price_comment}**  
+- **{oi_comment}**  
+- **{funding_comment}**  
+- **CVD**: {cvd_note}  
+        """)
+
+        if 'Open Interest is increasing' in ' '.join(analysis) and 'Net buying pressure' in ' '.join(analysis) and 'long bias' in ' '.join(analysis):
+            st.success("**Bias**: Bullish continuation likely — strong alignment.")
+        elif 'Net selling pressure' in ' '.join(analysis):
+            st.warning("**Bias**: Bearish exhaustion or distribution — wait for confirmation.")
+        else:
+            st.info("**Bias**: Mixed — stay patient or zoom in to lower timeframe.")
+        if 'Open Interest is increasing' in ' '.join(analysis):
+            st.write("- **OI is increasing**, confirming participation. Could support continuation if price structure is bullish.")
+        elif 'Open Interest is declining' in ' '.join(analysis):
+            st.write("- **OI is declining**, suggesting position unwinding or lack of conviction.")
+
+        if 'Funding Rate rising' in ' '.join(analysis):
+            st.write("- **Funding rate is rising**, showing long bias building. Be cautious of potential long crowding.")
+        elif 'Funding Rate falling' in ' '.join(analysis):
+            st.write("- **Funding rate is dropping**, indicating short interest increasing. May hint at bearish setups.")
+
+        if 'Net buying pressure' in ' '.join(analysis):
+            st.write("- **CVD shows net buying**, suggesting active buyers stepping in. Good if matched with bullish structure.")
+        elif 'Net selling pressure' in ' '.join(analysis):
+            st.write("- **CVD shows net selling**, suggesting passive buyers absorbing sell pressure or distribution occurring.")
