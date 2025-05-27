@@ -9,6 +9,7 @@ import pandas as pd
 import numpy as np
 import re
 import pytesseract
+import cv2
 from streamlit_autorefresh import st_autorefresh
 
 # ---------------------------------------------------
@@ -74,8 +75,13 @@ def save_levels(asset, levels):
           levels["supply"],levels["choch"],levels["chart_path"]))
     conn.commit()
 
-
-
+def get_slope_of_region(img_array, region):
+    x1, y1, x2, y2 = region
+    crop = img_array[y1:y2, x1:x2]
+    crop_gray = cv2.cvtColor(crop, cv2.COLOR_RGB2GRAY)
+    vertical_profile = np.mean(crop_gray, axis=1)
+    slope = vertical_profile[-1] - vertical_profile[0]
+    return slope
 
 def chart_analysis_mode():
     st.title("🧠 Chart Image Analyzer")
@@ -85,70 +91,34 @@ def chart_analysis_mode():
         raw_img = Image.open(uploaded_img)
         img = raw_img
 
-        
+        img_array = np.array(img)
+        h, w = img_array.shape[:2]
+
+        cvd_slope = get_slope_of_region(img_array, (0, int(h*0.83), w, int(h*0.98)))
+        funding_slope = get_slope_of_region(img_array, (0, int(h*0.66), w, int(h*0.83)))
+        oi_slope = get_slope_of_region(img_array, (0, int(h*0.5), w, int(h*0.66)))
+
         analysis = []
-        import cv2
+        if oi_slope > 10:
+            analysis.append("📈 Open Interest is increasing – new positions entering.")
+        elif oi_slope < -10:
+            analysis.append("📉 Open Interest is declining – positions are closing.")
+        else:
+            analysis.append("➖ Open Interest is flat – indecision.")
 
-def get_slope_of_region(img_array, region):
-    x1, y1, x2, y2 = region
-    crop = img_array[y1:y2, x1:x2]
-    crop_gray = cv2.cvtColor(crop, cv2.COLOR_RGB2GRAY)
-    vertical_profile = np.mean(crop_gray, axis=1)
-    slope = vertical_profile[-1] - vertical_profile[0]
-    return slope
+        if funding_slope > 10:
+            analysis.append("💡 Funding Rate rising (potential long bias)")
+        elif funding_slope < -10:
+            analysis.append("🔻 Funding Rate falling (potential short pressure)")
+        else:
+            analysis.append("🟰 Funding Rate flat")
 
-img_array = np.array(img)
-h, w = img_array.shape[:2]
-
-cvd_slope = get_slope_of_region(img_array, (0, int(h*0.83), w, int(h*0.98)))
-funding_slope = get_slope_of_region(img_array, (0, int(h*0.66), w, int(h*0.83)))
-oi_slope = get_slope_of_region(img_array, (0, int(h*0.5), w, int(h*0.66)))
-
-analysis = []
-if oi_slope > 10:
-    analysis.append("📈 Open Interest is increasing – new positions entering.")
-elif oi_slope < -10:
-    analysis.append("📉 Open Interest is declining – positions are closing.")
-else:
-    analysis.append("➖ Open Interest is flat – indecision.")
-
-if funding_slope > 10:
-    analysis.append("💡 Funding Rate rising (potential long bias)")
-elif funding_slope < -10:
-    analysis.append("🔻 Funding Rate falling (potential short pressure)")
-else:
-    analysis.append("🟰 Funding Rate flat")
-
-if cvd_slope < -10:
-    analysis.append("📉 CVD: Net selling pressure")
-elif cvd_slope > 10:
-    analysis.append("📈 CVD: Net buying pressure")
-else:
-    analysis.append("➖ CVD: Sideways / Neutral")
-
-        if len(oi_vals) >= 2:
-            if oi_vals[-1] > oi_vals[0]:
-                analysis.append("📈 Open Interest is increasing – new positions entering.")
-            elif oi_vals[-1] < oi_vals[0]:
-                analysis.append("📉 Open Interest is declining – positions are closing.")
-            else:
-                analysis.append("➖ Open Interest is flat – indecision.")
-
-        if funding_match:
-            funding = float(funding_match.group(1))
-            if funding > 0.01:
-                analysis.append(f"💡 Funding Rate: {funding:.4f} (High, long bias)")
-            elif funding < -0.01:
-                analysis.append(f"🔻 Funding Rate: {funding:.4f} (Shorts aggressive)")
-            else:
-                analysis.append(f"🟰 Funding Rate: {funding:.4f} (Neutral)")
-
-        if cvd_match:
-            cvd = float(cvd_match.group(1))
-            if cvd < 0:
-                analysis.append(f"📉 CVD: {cvd} (Net selling pressure)")
-            else:
-                analysis.append(f"📈 CVD: {cvd} (Net buying pressure)")
+        if cvd_slope < -10:
+            analysis.append("📉 CVD: Net selling pressure")
+        elif cvd_slope > 10:
+            analysis.append("📈 CVD: Net buying pressure")
+        else:
+            analysis.append("➖ CVD: Sideways / Neutral")
 
         st.markdown("---")
         st.markdown("### 📊 Analysis Summary")
@@ -166,7 +136,7 @@ else:
             "Increasing" if 'Open Interest is increasing' in ' '.join(analysis) else
             "Decreasing" if 'Open Interest is declining' in ' '.join(analysis) else "Flat",
             "Long Bias" if 'long bias' in ' '.join(analysis) else
-            "Short Bias" if 'Shorts aggressive' in ' '.join(analysis) else "Neutral",
+            "Short Bias" if 'short pressure' in ' '.join(analysis) else "Neutral",
             "Selling Pressure" if 'Net selling pressure' in ' '.join(analysis) else
             "Buying Pressure" if 'Net buying pressure' in ' '.join(analysis) else "Unknown"
         ))
@@ -185,20 +155,8 @@ else:
                 "❌" if 'Open Interest is increasing' in ' '.join(analysis) else "✅",
                 "✅" if 'Net selling pressure' in ' '.join(analysis) else "❌",
                 "⚠️",  # weak structure
-                "❌" if 'Shorts aggressive' in ' '.join(analysis) else "✅",
+                "❌" if 'short pressure' in ' '.join(analysis) else "✅",
                 "✅"  # compression can go both ways
             ]
         }
         st.dataframe(pd.DataFrame(readiness_data))
-
-# Existing app modes retained...
-def asset_data_mode():
-    ...
-
-# -----------------------------------------------------------------------------
-mode = st.sidebar.radio("Mode", ["Asset Data","Strategy","Mindset Dashboard","Trade Journal","Chart Analyzer"])
-if mode=="Asset Data":      asset_data_mode()
-elif mode=="Strategy":      strategy_mode()
-elif mode=="Mindset Dashboard": mindset_mode()
-elif mode=="Chart Analyzer": chart_analysis_mode()
-else:                       trade_journal_mode()
