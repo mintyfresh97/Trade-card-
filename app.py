@@ -9,7 +9,6 @@ import pandas as pd
 import numpy as np
 import re
 import pytesseract
-import cv2
 from streamlit_autorefresh import st_autorefresh
 
 # ---------------------------------------------------
@@ -78,7 +77,10 @@ def save_levels(asset, levels):
 def get_slope_of_region(img_array, region):
     x1, y1, x2, y2 = region
     crop = img_array[y1:y2, x1:x2]
-    crop_gray = cv2.cvtColor(crop, cv2.COLOR_RGB2GRAY)
+    if crop.ndim == 3:
+        crop_gray = np.mean(crop, axis=2)  # Convert RGB to grayscale
+    else:
+        crop_gray = crop
     vertical_profile = np.mean(crop_gray, axis=1)
     slope = vertical_profile[-1] - vertical_profile[0]
     return slope
