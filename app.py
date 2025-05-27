@@ -74,13 +74,23 @@ def save_levels(asset, levels):
           levels["supply"],levels["choch"],levels["chart_path"]))
     conn.commit()
 
+import cv2
+
+def preprocess_image(image):
+    img = np.array(image)
+    gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+    _, thresh = cv2.threshold(gray, 160, 255, cv2.THRESH_BINARY)
+    return Image.fromarray(thresh)
+
 def chart_analysis_mode():
     st.title("🧠 Chart Image Analyzer")
     uploaded_img = st.file_uploader("Upload Coinalyze/TV Chart", type=["png","jpg"])
 
     if uploaded_img:
-        img = Image.open(uploaded_img)
-        st.image(img, caption="Uploaded Chart", use_column_width=True)
+        raw_img = Image.open(uploaded_img)
+        img = preprocess_image(raw_img)
+        st.image(raw_img, caption="Original Uploaded Chart", use_column_width=True)
+        st.image(img, caption="Preprocessed for OCR", use_column_width=True)
 
         text = pytesseract.image_to_string(img)
         st.markdown("---")
