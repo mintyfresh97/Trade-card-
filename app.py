@@ -89,99 +89,52 @@ def random_sentiment():
     s = random.randint(-100,100)
     return ("Positive" if s>20 else "Negative" if s< -20 else "Neutral"), s
 
-# -----------------------------------------------------------------------------
-# Sidebar: Chart Image Analysis Tool
-# -----------------------------------------------------------------------------
-st.sidebar.markdown("### 🧠 Chart Image Analyzer")
-uploaded_img = st.sidebar.file_uploader("Upload Coinalyze/TV Chart", type=["png","jpg"])
+def chart_analysis_mode():
+    st.title("🧠 Chart Image Analyzer")
+    uploaded_img = st.file_uploader("Upload Coinalyze/TV Chart", type=["png","jpg"])
 
-if uploaded_img:
-    img = Image.open(uploaded_img)
-    st.sidebar.image(img, caption="Uploaded Chart", use_column_width=True)
+    if uploaded_img:
+        img = Image.open(uploaded_img)
+        st.image(img, caption="Uploaded Chart", use_column_width=True)
 
-    text = pytesseract.image_to_string(img)
-    st.sidebar.markdown("---")
-    st.sidebar.markdown("**🧾 OCR Text Extracted:**")
-    st.sidebar.text(text[:500])
+        text = pytesseract.image_to_string(img)
+        st.markdown("---")
+        st.markdown("**🧾 OCR Text Extracted:**")
+        st.text(text[:1000])
 
-    analysis = []
-    oi_vals = [float(x.replace("M","")) for x in re.findall(r'(\d+\.\d+)M', text)]
-    funding_match = re.search(r"Funding Rate.*?([+-]?\d+\.\d+)", text)
-    cvd_match = re.search(r"CVD.*?([+-]?\d+\.\d+)", text)
+        analysis = []
+        oi_vals = [float(x.replace("M","")) for x in re.findall(r'(\d+\.\d+)M', text)]
+        funding_match = re.search(r"Funding Rate.*?([+-]?\d+\.\d+)", text)
+        cvd_match = re.search(r"CVD.*?([+-]?\d+\.\d+)", text)
 
-    if len(oi_vals) >= 2:
-        if oi_vals[-1] > oi_vals[0]:
-            analysis.append("📈 Open Interest is increasing – new positions entering.")
-        elif oi_vals[-1] < oi_vals[0]:
-            analysis.append("📉 Open Interest is declining – positions are closing.")
-        else:
-            analysis.append("➖ Open Interest is flat – indecision.")
+        if len(oi_vals) >= 2:
+            if oi_vals[-1] > oi_vals[0]:
+                analysis.append("📈 Open Interest is increasing – new positions entering.")
+            elif oi_vals[-1] < oi_vals[0]:
+                analysis.append("📉 Open Interest is declining – positions are closing.")
+            else:
+                analysis.append("➖ Open Interest is flat – indecision.")
 
-    if funding_match:
-        funding = float(funding_match.group(1))
-        if funding > 0.01:
-            analysis.append(f"💡 Funding Rate: {funding:.4f} (High, long bias)")
-        elif funding < -0.01:
-            analysis.append(f"🔻 Funding Rate: {funding:.4f} (Shorts aggressive)")
-        else:
-            analysis.append(f"🟰 Funding Rate: {funding:.4f} (Neutral)")
+        if funding_match:
+            funding = float(funding_match.group(1))
+            if funding > 0.01:
+                analysis.append(f"💡 Funding Rate: {funding:.4f} (High, long bias)")
+            elif funding < -0.01:
+                analysis.append(f"🔻 Funding Rate: {funding:.4f} (Shorts aggressive)")
+            else:
+                analysis.append(f"🟰 Funding Rate: {funding:.4f} (Neutral)")
 
-    if cvd_match:
-        cvd = float(cvd_match.group(1))
-        if cvd < 0:
-            analysis.append(f"📉 CVD: {cvd} (Net selling pressure)")
-        else:
-            analysis.append(f"📈 CVD: {cvd} (Net buying pressure)")
+        if cvd_match:
+            cvd = float(cvd_match.group(1))
+            if cvd < 0:
+                analysis.append(f"📉 CVD: {cvd} (Net selling pressure)")
+            else:
+                analysis.append(f"📈 CVD: {cvd} (Net buying pressure)")
 
-    st.sidebar.markdown("---")
-    st.sidebar.markdown("### 📊 Analysis Summary")
-    for line in analysis:
-        st.sidebar.write(line)
-
-# -----------------------------------------------------------------------------
-# Modes
-# -----------------------------------------------------------------------------
-def asset_data_mode():
-    st.markdown("<div style='background:linear-gradient(to right,#2c2c2c,#3d3d3d);padding:1rem;border-radius:.5rem'>"
-                "<h1 style='color:#FFD700;text-align:center'>Asset Data</h1></div>",
-                unsafe_allow_html=True)
-    st_autorefresh(30000, key="ref1")
-    col1, col2 = st.columns([1,2])
-    with col1:
-        name = st.selectbox("Asset", list(coinpaprika_ids))
-        sym = name.split("(")[-1].strip(")")
-        price,daily,weekly,monthly = fetch_price(name)
-        if price:
-            st.write(f"**Price**: ${price}")
-            st.write(f"24h: {daily}%, 7d: {weekly}%, 30d: {monthly}%")
-        else:
-            st.write("Data unavailable.")
-        sent,sc = random_sentiment()
-        st.write(f"**Sentiment**: {sent} (Score {sc})")
-        levels = get_levels(name)
-        st.write("### Key Levels")
-        for k in ["support","demand","resistance","supply","choch"]:
-            st.write(f"**{k.title()}**: {levels[k] or 'N/A'}")
-        st.write("**Volume Strength**:", round(random.uniform(0,10),1), "/10")
-    with col2:
-        st.subheader("Modify Levels / Upload Chart")
-        lv = get_levels(name)
-        s1 = st.text_input("Support", lv["support"])
-        s2 = st.text_input("Demand", lv["demand"])
-        s3 = st.text_input("Resistance", lv["resistance"])
-        s4 = st.text_input("Supply", lv["supply"])
-        s5 = st.text_input("CHoCH", lv["choch"])
-        up = st.file_uploader("Chart", type=["png","jpg"])
-        if st.button("Save"):
-            path = lv["chart_path"]
-            if up:
-                fn = f"{sym}.png"
-                with open(os.path.join(CHARTS_DIR,fn),"wb") as f: f.write(up.getvalue())
-                path = fn
-            save_levels(name, {"support":s1,"demand":s2,"resistance":s3,"supply":s4,"choch":s5,"chart_path":path})
-            st.success("Saved!")
-        if lv["chart_path"]:
-            st.image(os.path.join(CHARTS_DIR,lv["chart_path"]), use_container_width=True)
+        st.markdown("---")
+        st.markdown("### 📊 Analysis Summary")
+        for line in analysis:
+            st.write(line)
 
 def strategy_mode():
     st.title("Strategy Tracker")
@@ -232,9 +185,52 @@ def trade_journal_mode():
                 with st.expander(f"{r.Date} {r.Asset} {r.Outcome}"):
                     st.write(r.to_dict())
 
+def asset_data_mode():
+    st.markdown("<div style='background:linear-gradient(to right,#2c2c2c,#3d3d3d);padding:1rem;border-radius:.5rem'>"
+                "<h1 style='color:#FFD700;text-align:center'>Asset Data</h1></div>",
+                unsafe_allow_html=True)
+    st_autorefresh(30000, key="ref1")
+    col1, col2 = st.columns([1,2])
+    with col1:
+        name = st.selectbox("Asset", list(coinpaprika_ids))
+        sym = name.split("(")[-1].strip(")")
+        price,daily,weekly,monthly = fetch_price(name)
+        if price:
+            st.write(f"**Price**: ${price}")
+            st.write(f"24h: {daily}%, 7d: {weekly}%, 30d: {monthly}%")
+        else:
+            st.write("Data unavailable.")
+        sent,sc = random_sentiment()
+        st.write(f"**Sentiment**: {sent} (Score {sc})")
+        levels = get_levels(name)
+        st.write("### Key Levels")
+        for k in ["support","demand","resistance","supply","choch"]:
+            st.write(f"**{k.title()}**: {levels[k] or 'N/A'}")
+        st.write("**Volume Strength**:", round(random.uniform(0,10),1), "/10")
+    with col2:
+        st.subheader("Modify Levels / Upload Chart")
+        lv = get_levels(name)
+        s1 = st.text_input("Support", lv["support"])
+        s2 = st.text_input("Demand", lv["demand"])
+        s3 = st.text_input("Resistance", lv["resistance"])
+        s4 = st.text_input("Supply", lv["supply"])
+        s5 = st.text_input("CHoCH", lv["choch"])
+        up = st.file_uploader("Chart", type=["png","jpg"])
+        if st.button("Save"):
+            path = lv["chart_path"]
+            if up:
+                fn = f"{sym}.png"
+                with open(os.path.join(CHARTS_DIR,fn),"wb") as f: f.write(up.getvalue())
+                path = fn
+            save_levels(name, {"support":s1,"demand":s2,"resistance":s3,"supply":s4,"choch":s5,"chart_path":path})
+            st.success("Saved!")
+        if lv["chart_path"]:
+            st.image(os.path.join(CHARTS_DIR,lv["chart_path"]), use_container_width=True)
+
 # -----------------------------------------------------------------------------
-mode = st.sidebar.radio("Mode", ["Asset Data","Strategy","Mindset Dashboard","Trade Journal"])
+mode = st.sidebar.radio("Mode", ["Asset Data","Strategy","Mindset Dashboard","Trade Journal","Chart Analyzer"])
 if mode=="Asset Data":      asset_data_mode()
 elif mode=="Strategy":      strategy_mode()
 elif mode=="Mindset Dashboard": mindset_mode()
+elif mode=="Chart Analyzer": chart_analysis_mode()
 else:                       trade_journal_mode()
