@@ -73,5 +73,14 @@ def save_levels(asset, levels):
           levels["supply"],levels["choch"],levels["chart_path"]))
     conn.commit()
 
+# ---------------------------------------------------
+# Basic UI to prevent blank screen
+# ---------------------------------------------------
+st.set_page_config(page_title="Crypto Chart App", layout="wide")
 
+st.title("📊 Streamlit Crypto Dashboard")
+
+st.markdown("This app is currently in setup mode. Features like chart analysis, trade logging, or strategy scoring will appear here once added.")
+
+st.markdown("To get started, select or build a page such as: ✅ Trade Journal, 📈 Strategy Tracker, or 🧠 Mindset Logger.")
 
