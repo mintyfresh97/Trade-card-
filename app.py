@@ -1,12 +1,12 @@
 import streamlit as st
-st.set_page_config(page_title="Trade Journal & PnL Dashboard", layout="wide")
-
+import re
+from PIL import Image
+import pytesseract
 import requests
 import os
 import random
 import sqlite3
 from datetime import datetime
-from PIL import Image
 import pandas as pd
 import numpy as np
 from streamlit_autorefresh import st_autorefresh
@@ -90,9 +90,57 @@ def random_sentiment():
     return ("Positive" if s>20 else "Negative" if s< -20 else "Neutral"), s
 
 # -----------------------------------------------------------------------------
+# Sidebar: Chart Image Analysis Tool
+# -----------------------------------------------------------------------------
+st.sidebar.markdown("### 🧠 Chart Image Analyzer")
+uploaded_img = st.sidebar.file_uploader("Upload Coinalyze/TV Chart", type=["png","jpg"])
+
+if uploaded_img:
+    img = Image.open(uploaded_img)
+    st.sidebar.image(img, caption="Uploaded Chart", use_column_width=True)
+
+    text = pytesseract.image_to_string(img)
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("**🧾 OCR Text Extracted:**")
+    st.sidebar.text(text[:500])
+
+    analysis = []
+    oi_vals = [float(x.replace("M","")) for x in re.findall(r'(\d+\.\d+)M', text)]
+    funding_match = re.search(r"Funding Rate.*?([+-]?\d+\.\d+)", text)
+    cvd_match = re.search(r"CVD.*?([+-]?\d+\.\d+)", text)
+
+    if len(oi_vals) >= 2:
+        if oi_vals[-1] > oi_vals[0]:
+            analysis.append("📈 Open Interest is increasing – new positions entering.")
+        elif oi_vals[-1] < oi_vals[0]:
+            analysis.append("📉 Open Interest is declining – positions are closing.")
+        else:
+            analysis.append("➖ Open Interest is flat – indecision.")
+
+    if funding_match:
+        funding = float(funding_match.group(1))
+        if funding > 0.01:
+            analysis.append(f"💡 Funding Rate: {funding:.4f} (High, long bias)")
+        elif funding < -0.01:
+            analysis.append(f"🔻 Funding Rate: {funding:.4f} (Shorts aggressive)")
+        else:
+            analysis.append(f"🟰 Funding Rate: {funding:.4f} (Neutral)")
+
+    if cvd_match:
+        cvd = float(cvd_match.group(1))
+        if cvd < 0:
+            analysis.append(f"📉 CVD: {cvd} (Net selling pressure)")
+        else:
+            analysis.append(f"📈 CVD: {cvd} (Net buying pressure)")
+
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### 📊 Analysis Summary")
+    for line in analysis:
+        st.sidebar.write(line)
+
+# -----------------------------------------------------------------------------
 # Modes
 # -----------------------------------------------------------------------------
-
 def asset_data_mode():
     st.markdown("<div style='background:linear-gradient(to right,#2c2c2c,#3d3d3d);padding:1rem;border-radius:.5rem'>"
                 "<h1 style='color:#FFD700;text-align:center'>Asset Data</h1></div>",
@@ -173,7 +221,7 @@ def mindset_mode():
         st.dataframe(pd.read_csv("mindset_log.csv").tail(5))
 
 def trade_journal_mode():
-    st.title("📓 Trade Journal & Checklist")
+    st.title("\ud83d\udcd3 Trade Journal & Checklist")
     if os.path.exists("trade_log.csv"):
         df = pd.read_csv("trade_log.csv")
         day = st.date_input("Review Date", datetime.now().date())
