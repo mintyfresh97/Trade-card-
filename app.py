@@ -88,41 +88,49 @@ def strategy_mode():
     else:
         st.info("No trades logged yet.")
 
-    # --- Example Trades Grid ---
+        # --- Example Trades Grid (Compact) ---
     st.markdown("---")
-    st.subheader("📁 Example Trades Gallery")
-    uploaded = st.file_uploader(
-        "Upload Example Trade Images", type=["png","jpg","jpeg"], accept_multiple_files=True, key="example_upload"
-    )
-    if uploaded:
-        for img in uploaded:
-            save_path = os.path.join(EXAMPLES_DIR, img.name)
-            with open(save_path, "wb") as f:
-                f.write(img.getbuffer())
-        st.success("Examples saved!")
-        st.experimental_rerun()
+    with st.expander("📁 Example Trades Gallery", expanded=False):
+        # Upload section
+        uploaded = st.file_uploader(
+            "Upload Example Trade Images", type=["png","jpg","jpeg"], accept_multiple_files=True, key="example_upload"
+        )
+        if uploaded:
+            for img in uploaded:
+                save_path = os.path.join(EXAMPLES_DIR, img.name)
+                with open(save_path, "wb") as f:
+                    f.write(img.getbuffer())
+            st.success("Examples saved!")
+            st.experimental_rerun()
 
-    files = sorted(os.listdir(EXAMPLES_DIR))
-    if files:
-        num_cols = 4
-        cols = st.columns(num_cols)
-        for idx, fname in enumerate(files):
-            img_path = os.path.join(EXAMPLES_DIR, fname)
-            try:
-                image = Image.open(img_path)
-                image.thumbnail((200, 200))
-                with cols[idx % num_cols]:
-                    st.image(image, caption=fname, use_container_width=True)
-                    if st.button(f"Delete {fname}", key=f"del_{idx}"):
-                        os.remove(img_path)
-                        st.experimental_rerun()
-            except Exception:
-                continue
-    else:
-        st.info("No example trades uploaded.")
+        # Display grid
+        files = sorted(os.listdir(EXAMPLES_DIR))
+        if files:
+            num_cols = 4
+            rows = (len(files) + num_cols - 1) // num_cols
+            for row in range(rows):
+                cols = st.columns(num_cols)
+                for col_idx in range(num_cols):
+                    idx = row * num_cols + col_idx
+                    if idx < len(files):
+                        fname = files[idx]
+                        img_path = os.path.join(EXAMPLES_DIR, fname)
+                        try:
+                            img = Image.open(img_path)
+                            img.thumbnail((150, 150))
+                            with cols[col_idx]:
+                                st.image(img, caption=fname, width=150)
+                                if st.button("Delete", key=f"del_{idx}"):
+                                    os.remove(img_path)
+                                    st.experimental_rerun()
+                        except Exception:
+                            cols[col_idx].markdown(f"Error loading {fname}")
+        else:
+            st.info("No example trades uploaded yet.")
 
 # Run the Strategy Tracker
 strategy_mode()
+
 
 
 
