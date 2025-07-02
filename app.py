@@ -1,85 +1,35 @@
 import streamlit as st
-import requests
 import os
 import random
-import sqlite3
-from datetime import datetime
-from PIL import Image
 import pandas as pd
-import numpy as np
-import plotly.express as px
-from streamlit_autorefresh import st_autorefresh
+from datetime import datetime
 
 # ---------------------------------------------------
-# Page Configuration and Directory Setup
+# Page Configuration
 # ---------------------------------------------------
-st.set_page_config(page_title="Trade Journal & PnL Dashboard", layout="wide")
-JOURNAL_CHART_DIR = "journal_charts"
-CHARTS_DIR = "charts"
-os.makedirs(JOURNAL_CHART_DIR, exist_ok=True)
-os.makedirs(CHARTS_DIR, exist_ok=True)
+st.set_page_config(page_title="Strategy Tracker", layout="wide")
 
 # ---------------------------------------------------
-# SQLite Persistence Setup
-# ---------------------------------------------------
-conn = sqlite3.connect("levels_data.db", check_same_thread=False)
-cursor = conn.cursor()
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS asset_levels (
-    asset TEXT PRIMARY KEY,
-    support TEXT,
-    demand TEXT,
-    resistance TEXT,
-    supply TEXT,
-    choch TEXT,
-    chart_path TEXT
-)
-""")
-conn.commit()
-
-coinpaprika_ids = {
-    'Bitcoin (BTC)': 'btc-bitcoin',
-    'Ethereum (ETH)': 'eth-ethereum',
-    # ... etc ...
-}
-
-# (Your get_levels_from_db, save_levels_to_db, get_coin_data_from_paprika, get_social_sentiment, etc. remain unchanged.)
-
-# ---------------------------------------------------
-# 1) Trade Journal Mode
-# ---------------------------------------------------
-def trade_journal_mode():
-    # ... unchanged ...
-    pass
-
-# ---------------------------------------------------
-# 2) Asset Data Mode
-# ---------------------------------------------------
-def asset_data_mode():
-    # ... unchanged ...
-    pass
-
-# ---------------------------------------------------
-# 3) Strategy Mode (with reliable CSV save)
+# Strategy Mode (only)
 # ---------------------------------------------------
 def strategy_mode():
     LOG_PATH = "trade_log.csv"
 
-    st.title("Strategy")
+    st.title("📈 Strategy Tracker")
     st.markdown("---")
 
     # Long Strategy Summary
     with st.expander("📋 Long Strategy Summary", expanded=True):
         st.markdown("""
 **Timeframe Analysis**: 4H → 1H → 15M  
-**Tools Used**: EMA Long Strategy, zones, structure, CHoCH, momentum  
+**Tools Used**: EMA, zones, structure, CHoCH, momentum  
 
 **Entry Criteria**:  
 - Price returns to a key zone  
-- Wait for breakout with momentum, CHoCH & EMA signal  
+- Confirmation: breakout + momentum + CHoCH + EMA signal  
 
 **Risk Management**:  
-- Stop Loss: 1% or below range lows  
+- Stop Loss: 1% or range lows  
 - TP1: 3% (close 25%)  
 - TP2: 5% (full exit)  
 - Exit early on 5m CHoCH break or momentum shift  
@@ -90,13 +40,13 @@ def strategy_mode():
         mb1 = st.radio("Is price forming at a price level and ranging?", ["Yes","No"], key="mb1")
         mb2 = st.radio("If ranging, have highs and lows been defined?", ["Yes","No"], key="mb2")
         mb3 = st.radio("Are BTC and ETH both trading in the same direction?", ["Yes","No"], key="mb3")
-        mb4 = st.radio("Is there clear momentum in this zone to support the trade?", ["Yes","No"], key="mb4")
-        if st.button("Save Market Behavior Check", key="save_mb"):
+        mb4 = st.radio("Is there clear momentum to support the trade?", ["Yes","No"], key="mb4")
+        if st.button("Save Market Behavior", key="save_mb"):
             st.success("Market behavior saved!")
 
     st.markdown("---")
 
-    # Load or initialize log DataFrame
+    # Load or initialize trade log
     if os.path.exists(LOG_PATH):
         df_log = pd.read_csv(LOG_PATH)
     else:
@@ -127,48 +77,15 @@ def strategy_mode():
             st.success("Trade saved to log!")
 
     # Display the log
-    st.markdown("### Trade History")
+    st.markdown("### 📊 Trade History")
     if not df_log.empty:
         st.dataframe(df_log)
     else:
-        st.info("No trade log found yet.")
+        st.info("No trades logged yet.")
 
 # ---------------------------------------------------
-# 4) Mindset Dashboard Mode
+# Launch the Strategy page directly
 # ---------------------------------------------------
-def mindset_mode():
-    # ... unchanged ...
-    pass
-
-# ---------------------------------------------------
-# 5) Flip Tracker Mode
-# ---------------------------------------------------
-def flip_tracker_mode():
-    # ... unchanged ...
-    pass
-
-# ---------------------------------------------------
-# Navigation
-# ---------------------------------------------------
-mode = st.sidebar.radio("Select App Mode", [
-    "Trade Journal & Checklist",
-    "Asset Data",
-    "Strategy",
-    "Mindset Dashboard",
-    "Flip Tracker"
-])
-
-if mode == "Trade Journal & Checklist":
-    trade_journal_mode()
-elif mode == "Asset Data":
-    asset_data_mode()
-elif mode == "Strategy":
-    strategy_mode()
-elif mode == "Mindset Dashboard":
-    mindset_mode()
-elif mode == "Flip Tracker":
-    flip_tracker_mode()
-
-st.markdown("To get started, select or build a page such as: ✅ Trade Journal, 📈 Strategy Tracker, or 🧠 Mindset Logger.")
+strategy_mode()
 
 
