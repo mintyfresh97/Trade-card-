@@ -1,10 +1,7 @@
 streamlit>=1.44.0
 requests
-pillow
+Pillow
 pandas
 numpy
 plotly
 streamlit-autorefresh
-twilio
-pytesseract
-opencv-python
