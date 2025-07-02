@@ -80,12 +80,27 @@ def strategy_mode():
             df.to_csv(LOG_PATH, index=False)
             st.success("Trade saved!")
 
-    # --- Display Log ---
+        # --- Display Log ---
     st.markdown("### 📊 Trade History")
     if not df.empty:
         st.dataframe(df)
     else:
         st.info("No trades logged yet.")
+
+    # --- Example Upload ---
+    st.markdown("---")
+    st.subheader("📁 Upload Example Trades")
+    uploaded = st.file_uploader(
+        "Upload Example Trade Image(s)", type=["png","jpg","jpeg"], accept_multiple_files=True, key="example_upload"
+    )
+    if uploaded:
+        for img in uploaded:
+            save_path = os.path.join(EXAMPLES_DIR, img.name)
+            with open(save_path, "wb") as f:
+                f.write(img.getbuffer())
+        st.success("Examples saved!")
+
+    files = os.listdir(EXAMPLES_DIR)
 
     files = os.listdir(EXAMPLES_DIR)
     if files:
@@ -102,5 +117,6 @@ def strategy_mode():
 
 # Run tracker
 strategy_mode()
+
 
 
