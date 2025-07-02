@@ -38,7 +38,7 @@ def strategy_mode():
         cols = st.columns(min(3, len(example_files)))
         for idx, fname in enumerate(example_files):
             with cols[idx % len(cols)]:
-                st.image(os.path.join(EXAMPLES_DIR, fname), caption=fname, use_column_width=True)
+                st.image(os.path.join(EXAMPLES_DIR, fname), caption=fname, use_container_width=True)
     else:
         st.info("No example trades uploaded yet.")
 
@@ -113,6 +113,3 @@ def strategy_mode():
 # Launch Strategy Tracker directly
 # ---------------------------------------------------
 strategy_mode()
-
-
-
