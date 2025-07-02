@@ -101,12 +101,12 @@ def strategy_mode():
                 with open(save_path, "wb") as f:
                     f.write(img.getbuffer())
             st.success("Examples saved!")
-            st.experimental_rerun()
+            
 
-        # Display grid
+                # Display grid
         files = sorted(os.listdir(EXAMPLES_DIR))
         if files:
-            num_cols = 4
+            num_cols = 3  # fewer columns for larger images
             rows = (len(files) + num_cols - 1) // num_cols
             for row in range(rows):
                 cols = st.columns(num_cols)
@@ -117,20 +117,19 @@ def strategy_mode():
                         img_path = os.path.join(EXAMPLES_DIR, fname)
                         try:
                             img = Image.open(img_path)
-                            img.thumbnail((150, 150))
+                            img.thumbnail((300, 300))  # increase thumbnail size
                             with cols[col_idx]:
-                                st.image(img, caption=fname, width=150)
+                                st.image(img, caption=fname, width=300)
                                 if st.button("Delete", key=f"del_{idx}"):
                                     os.remove(img_path)
-                                    st.experimental_rerun()
                         except Exception:
                             cols[col_idx].markdown(f"Error loading {fname}")
         else:
             st.info("No example trades uploaded yet.")
+            st.info("No example trades uploaded yet.")
 
 # Run the Strategy Tracker
 strategy_mode()
-
 
 
 
