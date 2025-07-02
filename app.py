@@ -1,4 +1,4 @@
-```python
+
 import streamlit as st
 from PIL import Image
 import os
@@ -178,4 +178,4 @@ def strategy_mode():
 
 # Launch the Strategy Tracker
 strategy_mode()
-```
+
