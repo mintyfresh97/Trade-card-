@@ -101,11 +101,11 @@ def strategy_mode():
                 with open(save_path, "wb") as f:
                     f.write(img.getbuffer())
             st.success("Examples saved!")
-        
+
         # Display grid
         files = sorted(os.listdir(EXAMPLES_DIR))
         if files:
-            num_cols = 3  # fewer columns for larger images
+            num_cols = 3  # grid columns
             rows = (len(files) + num_cols - 1) // num_cols
             for row in range(rows):
                 cols = st.columns(num_cols)
@@ -117,16 +117,15 @@ def strategy_mode():
                         try:
                             thumbnail = Image.open(img_path)
                             thumbnail.thumbnail((150, 150))
+                            # Thumbnail display
                             with cols[col_idx]:
-                                # Clickable expander for full image
-                                with st.expander(fname):
-                                    img_full = Image.open(img_path)
-                                    st.image(img_full, width=600)
+                                st.image(thumbnail, use_container_width=True, caption=fname)
+                                # Expander for full image
+                                with st.expander("View Larger", expanded=False):
+                                    full_img = Image.open(img_path)
+                                    st.image(full_img, use_container_width=True)
                                     if st.button("Delete", key=f"del_{idx}"):
                                         os.remove(img_path)
-                                        # No rerun; UI will update on refresh
-                                # Show thumbnail outside expander
-                                st.image(thumbnail, width=150)
                         except Exception:
                             cols[col_idx].markdown(f"Error loading {fname}")
         else:
@@ -134,4 +133,5 @@ def strategy_mode():
 
 # Run the Strategy Tracker
 strategy_mode()
+
 
