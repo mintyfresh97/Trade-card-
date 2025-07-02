@@ -120,7 +120,8 @@ def strategy_mode():
                             with cols[col_idx]:
                                 # Clickable expander for full image
                                 with st.expander(fname):
-                                    st.image(img_path, use_container_width=True)
+                                    img_full = Image.open(img_path)
+                                    st.image(img_full, width=600)
                                     if st.button("Delete", key=f"del_{idx}"):
                                         os.remove(img_path)
                                         # No rerun; UI will update on refresh
