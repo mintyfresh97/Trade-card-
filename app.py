@@ -101,35 +101,36 @@ def strategy_mode():
                 with open(save_path, "wb") as f:
                     f.write(img.getbuffer())
             st.success("Examples saved!")
-            
-
-                # Display grid
+        
+        # Display grid
         files = sorted(os.listdir(EXAMPLES_DIR))
         if files:
             num_cols = 3  # fewer columns for larger images
             rows = (len(files) + num_cols - 1) // num_cols
-                    for row in range(rows):
-            cols = st.columns(num_cols)
-            for col_idx in range(num_cols):
-                idx = row * num_cols + col_idx
-                if idx < len(files):
-                    fname = files[idx]
-                    img_path = os.path.join(EXAMPLES_DIR, fname)
-                    try:
-                        thumbnail = Image.open(img_path)
-                        thumbnail.thumbnail((150, 150))
-                        with cols[col_idx]:
-                            # Clickable expander for full image
-                            with st.expander(fname):
-                                st.image(img_path, use_container_width=True)
-                                if st.button("Delete", key=f"del_{idx}"):
-                                    os.remove(img_path)
-                                    st.experimental_rerun()
-                            # Show thumbnail outside expander
-                            st.image(thumbnail, width=150)
-                    except Exception:
-                        cols[col_idx].markdown(f"Error loading {fname}")
+            for row in range(rows):
+                cols = st.columns(num_cols)
+                for col_idx in range(num_cols):
+                    idx = row * num_cols + col_idx
+                    if idx < len(files):
+                        fname = files[idx]
+                        img_path = os.path.join(EXAMPLES_DIR, fname)
+                        try:
+                            thumbnail = Image.open(img_path)
+                            thumbnail.thumbnail((150, 150))
+                            with cols[col_idx]:
+                                # Clickable expander for full image
+                                with st.expander(fname):
+                                    st.image(img_path, use_container_width=True)
+                                    if st.button("Delete", key=f"del_{idx}"):
+                                        os.remove(img_path)
+                                        # No rerun; UI will update on refresh
+                                # Show thumbnail outside expander
+                                st.image(thumbnail, width=150)
+                        except Exception:
+                            cols[col_idx].markdown(f"Error loading {fname}")
         else:
             st.info("No example trades uploaded yet.")
 
+# Run the Strategy Tracker
+strategy_mode()
 
