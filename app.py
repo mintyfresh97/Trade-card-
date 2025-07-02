@@ -1,4 +1,5 @@
 import streamlit as st
+from PIL import Image
 import os
 import pandas as pd
 import random
@@ -25,11 +26,11 @@ def strategy_mode():
         st.markdown(
             """
 **Timeframe Analysis**: 4H → 1H → 15M  
-**Tools Used**: EMA, zones, structure, CHoCH, momentum
+**Tools Used**: EMA, zones, structure, CHoCH, momentum  
 
 **Entry Criteria**:  
 - Price returns to key zone  
-- Confirm: breakout + momentum + CHoCH + EMA signal
+- Confirm: breakout + momentum + CHoCH + EMA signal  
 
 **Risk Management**:  
 - Stop Loss: 1% or below range lows  
@@ -58,12 +59,12 @@ def strategy_mode():
 
     # --- Trade Input Form ---
     with st.form("trade_form", clear_on_submit=True):
-        l, r = st.columns(2)
-        with l:
+        left, right = st.columns(2)
+        with left:
             asset = st.text_input("Asset Symbol", placeholder="e.g. BTC")
             strat = st.text_input("Strategy Name", placeholder="e.g. EMA Bounce")
             outcome = st.selectbox("Trade Outcome", ["Win","Loss","Break-even"])
-        with r:
+        with right:
             rr = st.text_input("RR Ratio", "1:1")
             notes = st.text_area("Additional Notes")
         submitted = st.form_submit_button("Save Trade to Log")
@@ -80,18 +81,18 @@ def strategy_mode():
             df.to_csv(LOG_PATH, index=False)
             st.success("Trade saved!")
 
-        # --- Display Log ---
+    # --- Display Log ---
     st.markdown("### 📊 Trade History")
     if not df.empty:
         st.dataframe(df)
     else:
         st.info("No trades logged yet.")
 
-    # --- Example Upload ---
+    # --- Example Trades Grid ---
     st.markdown("---")
-    st.subheader("📁 Upload Example Trades")
+    st.subheader("📁 Example Trades Gallery")
     uploaded = st.file_uploader(
-        "Upload Example Trade Image(s)", type=["png","jpg","jpeg"], accept_multiple_files=True, key="example_upload"
+        "Upload Example Trade Images", type=["png","jpg","jpeg"], accept_multiple_files=True, key="example_upload"
     )
     if uploaded:
         for img in uploaded:
@@ -101,22 +102,26 @@ def strategy_mode():
         st.success("Examples saved!")
         st.experimental_rerun()
 
-    files = os.listdir(EXAMPLES_DIR)
-
-    files = os.listdir(EXAMPLES_DIR)
+    files = sorted(os.listdir(EXAMPLES_DIR))
     if files:
-        for name in files:
-            cols = st.columns([4,1])
-            with cols[0]:
-                st.image(os.path.join(EXAMPLES_DIR, name), caption=name, use_container_width=True)
-            with cols[1]:
-                if st.button(f"Delete {name}"):
-                    os.remove(os.path.join(EXAMPLES_DIR, name))
-                    st.experimental_rerun()
+        num_cols = 4
+        cols = st.columns(num_cols)
+        for idx, fname in enumerate(files):
+            img_path = os.path.join(EXAMPLES_DIR, fname)
+            try:
+                image = Image.open(img_path)
+                image.thumbnail((200, 200))
+                with cols[idx % num_cols]:
+                    st.image(image, caption=fname, use_container_width=True)
+                    if st.button(f"Delete {fname}", key=f"del_{idx}"):
+                        os.remove(img_path)
+                        st.experimental_rerun()
+            except Exception:
+                continue
     else:
-        st.info("No examples uploaded.")
+        st.info("No example trades uploaded.")
 
-# Run tracker
+# Run the Strategy Tracker
 strategy_mode()
 
 
