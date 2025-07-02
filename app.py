@@ -102,6 +102,5 @@ def strategy_mode():
 
 # Run tracker
 strategy_mode()
-strategy_mode()
 
 
