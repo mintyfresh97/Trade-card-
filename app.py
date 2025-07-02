@@ -1,4 +1,3 @@
-
 import streamlit as st
 from PIL import Image
 import os
@@ -7,6 +6,7 @@ import pandas as pd
 import random
 from datetime import datetime
 import boto3
+from botocore.config import Config
 from botocore.exceptions import ClientError
 
 # ---------------------------------------------------
@@ -14,24 +14,34 @@ from botocore.exceptions import ClientError
 # ---------------------------------------------------
 st.set_page_config(page_title="📈 Strategy Tracker", layout="wide")
 
-# ----- AWS S3 Setup -----
-# Load AWS credentials and bucket from Streamlit secrets
-AWS_ACCESS_KEY_ID = st.secrets.get("aws", {}).get("AWS_ACCESS_KEY_ID")
-AWS_SECRET_ACCESS_KEY = st.secrets.get("aws", {}).get("AWS_SECRET_ACCESS_KEY")
-AWS_DEFAULT_REGION = st.secrets.get("aws", {}).get("AWS_DEFAULT_REGION")
-S3_BUCKET = st.secrets.get("aws", {}).get("S3_BUCKET")
+# ---------------------------------------------------
+# AWS S3 Setup
+# ---------------------------------------------------
+# Load your credentials & bucket from Streamlit secrets:
+aws_secrets = st.secrets.get("aws", {})
+AWS_ACCESS_KEY_ID     = aws_secrets.get("AWS_ACCESS_KEY_ID", "").strip()
+AWS_SECRET_ACCESS_KEY = aws_secrets.get("AWS_SECRET_ACCESS_KEY", "").strip()
+AWS_DEFAULT_REGION    = aws_secrets.get("AWS_DEFAULT_REGION", "").strip()
+S3_BUCKET             = aws_secrets.get("S3_BUCKET", "").strip()
 
 if not all([AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_DEFAULT_REGION, S3_BUCKET]):
-    st.error("S3 configuration missing in secrets. Please set AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_DEFAULT_REGION, and S3_BUCKET in Streamlit secrets.")
+    st.error(
+        "🚨 S3 configuration missing. "
+        "Please set AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_DEFAULT_REGION & S3_BUCKET in your Streamlit secrets."
+    )
     st.stop()
 
-os.environ["AWS_ACCESS_KEY_ID"] = AWS_ACCESS_KEY_ID
-os.environ["AWS_SECRET_ACCESS_KEY"] = AWS_SECRET_ACCESS_KEY
-os.environ["AWS_DEFAULT_REGION"] = AWS_DEFAULT_REGION
-s3 = boto3.client("s3")
+# Build S3 client explicitly (no hidden whitespace or quotes)
+s3 = boto3.client(
+    "s3",
+    aws_access_key_id     = AWS_ACCESS_KEY_ID,
+    aws_secret_access_key = AWS_SECRET_ACCESS_KEY,
+    region_name           = AWS_DEFAULT_REGION,
+    config                = Config(signature_version="s3v4"),
+)
 
 # ---------------------------------------------------
-# S3 Helpers
+# S3 Helper Functions
 # ---------------------------------------------------
 def list_s3_keys():
     try:
@@ -41,15 +51,17 @@ def list_s3_keys():
         st.error(f"Could not list S3 objects: {e.response['Error']['Message']}")
         return []
 
-
 def upload_to_s3(uploaded_file):
     try:
-        s3.put_object(Bucket=S3_BUCKET, Key=uploaded_file.name, Body=uploaded_file.getbuffer())
+        s3.put_object(
+            Bucket = S3_BUCKET,
+            Key    = uploaded_file.name,
+            Body   = uploaded_file.getbuffer()
+        )
         return True
     except ClientError as e:
         st.error(f"Upload failed: {e.response['Error']['Message']}")
         return False
-
 
 def delete_from_s3(key):
     try:
@@ -58,7 +70,6 @@ def delete_from_s3(key):
     except ClientError as e:
         st.error(f"Delete failed: {e.response['Error']['Message']}")
         return False
-
 
 def get_s3_image(key):
     try:
@@ -69,10 +80,11 @@ def get_s3_image(key):
         return None
 
 # ---------------------------------------------------
-# Strategy Tracker
+# Strategy Tracker App
 # ---------------------------------------------------
 def strategy_mode():
     LOG_PATH = "trade_log.csv"
+
     st.title("📈 Strategy Tracker")
     st.markdown("---")
 
@@ -106,7 +118,7 @@ def strategy_mode():
 
     st.markdown("---")
 
-    # --- Load or initialize trade log ---
+    # --- Load or initialize local trade log CSV ---
     if os.path.exists(LOG_PATH):
         df = pd.read_csv(LOG_PATH)
     else:
@@ -116,11 +128,11 @@ def strategy_mode():
     with st.form("trade_form", clear_on_submit=True):
         left, right = st.columns(2)
         with left:
-            asset = st.text_input("Asset Symbol", placeholder="e.g. BTC")
-            strat = st.text_input("Strategy Name", placeholder="e.g. EMA Bounce")
+            asset   = st.text_input("Asset Symbol", placeholder="e.g. BTC")
+            strat   = st.text_input("Strategy Name", placeholder="e.g. EMA Bounce")
             outcome = st.selectbox("Trade Outcome", ["Win","Loss","Break-even"])
         with right:
-            rr = st.text_input("RR Ratio", "1:1")
+            rr    = st.text_input("RR Ratio", "1:1")
             notes = st.text_area("Additional Notes")
         submitted = st.form_submit_button("Save Trade to Log")
         if submitted:
@@ -136,23 +148,26 @@ def strategy_mode():
             df.to_csv(LOG_PATH, index=False)
             st.success("Trade saved!")
 
-    # --- Trade History ---
+    # --- Trade History Display ---
     st.markdown("### 📊 Trade History")
     if not df.empty:
         st.dataframe(df)
     else:
         st.info("No trades logged yet.")
 
-    # --- Example Trades Gallery (S3-backed) ---
+    # --- Example Trades Gallery (S3) ---
     st.markdown("---")
     with st.expander("📁 Example Trades Gallery", expanded=False):
         uploaded = st.file_uploader(
-            "Upload Example Trade Images (to S3)", type=["png","jpg","jpeg"], accept_multiple_files=True, key="example_upload"
+            "Upload Example Trade Images (to S3)",
+            type=["png","jpg","jpeg"],
+            accept_multiple_files=True,
+            key="example_upload"
         )
         if uploaded:
             for img in uploaded:
                 if upload_to_s3(img):
-                    st.success(f"Uploaded {img.name} to S3")
+                    st.success(f"Uploaded `{img.name}` to S3")
 
         keys = list_s3_keys()
         if keys:
@@ -172,10 +187,9 @@ def strategy_mode():
                                     st.image(img, use_container_width=True)
                                     if st.button("Delete from S3", key=f"del_{idx}"):
                                         if delete_from_s3(key):
-                                            st.success(f"Deleted {key} from S3")
+                                            st.success(f"Deleted `{key}` from S3")
         else:
             st.info("No example trades in S3 yet.")
 
-# Launch the Strategy Tracker
+# Run the app
 strategy_mode()
-
