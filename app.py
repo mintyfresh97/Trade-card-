@@ -1,3 +1,4 @@
+```python
 import streamlit as st
 from PIL import Image
 import os
@@ -14,27 +15,58 @@ from botocore.exceptions import ClientError
 st.set_page_config(page_title="📈 Strategy Tracker", layout="wide")
 
 # ----- AWS S3 Setup -----
-# Load AWS credentials from Streamlit secrets
-os.environ["AWS_ACCESS_KEY_ID"] = st.secrets["aws"]["AWS_ACCESS_KEY_ID"]
-os.environ["AWS_SECRET_ACCESS_KEY"] = st.secrets["aws"]["AWS_SECRET_ACCESS_KEY"]
-os.environ["AWS_DEFAULT_REGION"] = st.secrets["aws"]["AWS_DEFAULT_REGION"]
+# Load AWS credentials and bucket from Streamlit secrets
+AWS_ACCESS_KEY_ID = st.secrets.get("aws", {}).get("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = st.secrets.get("aws", {}).get("AWS_SECRET_ACCESS_KEY")
+AWS_DEFAULT_REGION = st.secrets.get("aws", {}).get("AWS_DEFAULT_REGION")
+S3_BUCKET = st.secrets.get("aws", {}).get("S3_BUCKET")
 
-S3_BUCKET = "your-bucket-name"  # <--- replace with your S3 bucket name
+if not all([AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_DEFAULT_REGION, S3_BUCKET]):
+    st.error("S3 configuration missing in secrets. Please set AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_DEFAULT_REGION, and S3_BUCKET in Streamlit secrets.")
+    st.stop()
+
+os.environ["AWS_ACCESS_KEY_ID"] = AWS_ACCESS_KEY_ID
+os.environ["AWS_SECRET_ACCESS_KEY"] = AWS_SECRET_ACCESS_KEY
+os.environ["AWS_DEFAULT_REGION"] = AWS_DEFAULT_REGION
 s3 = boto3.client("s3")
 
+# ---------------------------------------------------
+# S3 Helpers
+# ---------------------------------------------------
 def list_s3_keys():
-    resp = s3.list_objects_v2(Bucket=S3_BUCKET)
-    return [obj["Key"] for obj in resp.get("Contents", [])] if resp.get("Contents") else []
+    try:
+        resp = s3.list_objects_v2(Bucket=S3_BUCKET)
+        return [obj["Key"] for obj in resp.get("Contents", [])]
+    except ClientError as e:
+        st.error(f"Could not list S3 objects: {e.response['Error']['Message']}")
+        return []
+
 
 def upload_to_s3(uploaded_file):
-    s3.put_object(Bucket=S3_BUCKET, Key=uploaded_file.name, Body=uploaded_file.getbuffer())
+    try:
+        s3.put_object(Bucket=S3_BUCKET, Key=uploaded_file.name, Body=uploaded_file.getbuffer())
+        return True
+    except ClientError as e:
+        st.error(f"Upload failed: {e.response['Error']['Message']}")
+        return False
+
 
 def delete_from_s3(key):
-    s3.delete_object(Bucket=S3_BUCKET, Key=key)
+    try:
+        s3.delete_object(Bucket=S3_BUCKET, Key=key)
+        return True
+    except ClientError as e:
+        st.error(f"Delete failed: {e.response['Error']['Message']}")
+        return False
+
 
 def get_s3_image(key):
-    obj = s3.get_object(Bucket=S3_BUCKET, Key=key)
-    return Image.open(io.BytesIO(obj["Body"].read()))
+    try:
+        obj = s3.get_object(Bucket=S3_BUCKET, Key=key)
+        return Image.open(io.BytesIO(obj["Body"].read()))
+    except ClientError as e:
+        st.error(f"Could not load image '{key}': {e.response['Error']['Message']}")
+        return None
 
 # ---------------------------------------------------
 # Strategy Tracker
@@ -114,44 +146,36 @@ def strategy_mode():
     # --- Example Trades Gallery (S3-backed) ---
     st.markdown("---")
     with st.expander("📁 Example Trades Gallery", expanded=False):
-        # Upload to S3
         uploaded = st.file_uploader(
             "Upload Example Trade Images (to S3)", type=["png","jpg","jpeg"], accept_multiple_files=True, key="example_upload"
         )
         if uploaded:
             for img in uploaded:
-                try:
-                    upload_to_s3(img)
+                if upload_to_s3(img):
                     st.success(f"Uploaded {img.name} to S3")
-                except ClientError as e:
-                    st.error(f"Upload failed: {e}")
 
-        # Display gallery
         keys = list_s3_keys()
         if keys:
             num_cols = 3
             rows = (len(keys) + num_cols - 1) // num_cols
-            for row in range(rows):
+            for r in range(rows):
                 cols = st.columns(num_cols)
                 for i, col in enumerate(cols):
-                    idx = row * num_cols + i
+                    idx = r * num_cols + i
                     if idx < len(keys):
                         key = keys[idx]
-                        with col:
-                            # Thumbnail
-                            img = get_s3_image(key)
-                            st.image(img, width=200, caption=key)
-                            # Full view expander
-                            with st.expander("View Larger", expanded=False):
-                                st.image(img, use_container_width=True)
-                                if st.button("Delete from S3", key=f"del_{idx}"):
-                                    try:
-                                        delete_from_s3(key)
-                                        st.success(f"Deleted {key} from S3")
-                                    except ClientError as e:
-                                        st.error(f"Delete failed: {e}")
+                        img = get_s3_image(key)
+                        if img:
+                            with col:
+                                st.image(img, width=200, caption=key)
+                                with st.expander("View Larger", expanded=False):
+                                    st.image(img, use_container_width=True)
+                                    if st.button("Delete from S3", key=f"del_{idx}"):
+                                        if delete_from_s3(key):
+                                            st.success(f"Deleted {key} from S3")
         else:
             st.info("No example trades in S3 yet.")
 
 # Launch the Strategy Tracker
 strategy_mode()
+```
