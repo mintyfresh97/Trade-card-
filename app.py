@@ -99,6 +99,7 @@ def strategy_mode():
             with open(save_path, "wb") as f:
                 f.write(img.getbuffer())
         st.success("Examples saved!")
+        st.experimental_rerun()("Examples saved!")
 
     files = os.listdir(EXAMPLES_DIR)
 
@@ -117,6 +118,7 @@ def strategy_mode():
 
 # Run tracker
 strategy_mode()
+
 
 
 
