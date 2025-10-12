@@ -1,38 +1,38 @@
 import streamlit as st
 import boto3
-from botocore.exceptions import NoCredentialsError
 import uuid
 
-# Load secrets
-import os
-AWS_ACCESS_KEY = st.secrets["AKIAQIZB4WMEUBMDJYP6"]
-AWS_SECRET_KEY = st.secrets["gC17UhZoqv7U91efqOjt1WstKiog+17UfV8nhfi"]
-REGION = st.secrets["eu-west-2"]
-BUCKET = st.secrets["streamlit-uploader-oct25"]
+# ✅ Load AWS credentials from Streamlit Secrets
+AWS_ACCESS_KEY = st.secrets["AWS_ACCESS_KEY_ID"]
+AWS_SECRET_KEY = st.secrets["AWS_SECRET_ACCESS_KEY"]
+REGION = st.secrets["AWS_REGION"]
+BUCKET = st.secrets["S3_BUCKET"]
 
-# Configure boto3
+# Configure S3 client
 s3 = boto3.client(
-    's3',
+    "s3",
     aws_access_key_id=AWS_ACCESS_KEY,
     aws_secret_access_key=AWS_SECRET_KEY,
     region_name=REGION
 )
 
-st.title("📸 Image Uploader")
+st.title("📸 Upload Images to S3")
 
-uploaded_file = st.file_uploader("Upload an image", type=["png", "jpg", "jpeg"])
+# File uploader
+uploaded_file = st.file_uploader("Choose an image", type=["png", "jpg", "jpeg"])
 
 if uploaded_file is not None:
-    # Give the file a unique name
+    # Give file a unique name to avoid overwriting
     file_key = f"{uuid.uuid4()}_{uploaded_file.name}"
 
     try:
+        # Upload to S3
         s3.upload_fileobj(uploaded_file, BUCKET, file_key)
-        st.success(f"✅ Uploaded to S3 as {file_key}")
+        st.success(f"✅ Uploaded as {file_key}")
 
-        # Optional: show image
+        # Display the uploaded image from S3
         image_url = f"https://{BUCKET}.s3.{REGION}.amazonaws.com/{file_key}"
-        st.image(image_url)
+        st.image(image_url, caption="Uploaded Image", use_column_width=True)
 
-    except NoCredentialsError:
-        st.error("AWS credentials not found")
+    except Exception as e:
+        st.error(f"Error uploading file: {e}")
