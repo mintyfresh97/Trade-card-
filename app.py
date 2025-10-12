@@ -5,7 +5,7 @@ import uuid
 
 # Load secrets
 import os
-AWS_ACCESS_KEY = st.secrets["AKIAQIZB4WMEXA43T3WH"]
+AWS_ACCESS_KEY = st.secrets["AKIAQIZB4WMEUBMDJYP6"]
 AWS_SECRET_KEY = st.secrets["gC17UhZoqv7U91efqOjt1WstKiog+17UfV8nhfi"]
 REGION = st.secrets["eu-west-2"]
 BUCKET = st.secrets["streamlit-uploader-oct25"]
